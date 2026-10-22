@@ -7,7 +7,19 @@ Two separate apps that talk over HTTP:
 | `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, serves every number the dashboards show |
 | `frontend/` | Next.js 15, React | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
 
-**Status: Phase 3 of 5** (the three dashboards). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+**Status: Phase 4 of 5** (the admin console). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+
+## What Phase 4 adds
+An **Admin console** (`/admin`, administrators only; the dashboard header shows a link for admins) with:
+- **Data quality**: calls with no client (by phone line, with counts and first/last seen), lines listed for two clients, suspicious swaps, orders whose Total does not add up, calls without a recording, unmapped agents, emails from unknown domains, last sync per feed and a stale-feed alert (no new calls for more than 2 hours during a shift).
+- **Who dialed for whom**: upload an .xlsx or .csv (the old wide sheet or the simple template, daily uploads included), check it first (what would be added, replaced or removed per period, errors, warnings), save, see the history, roll back. Calls are recalculated in the background.
+- **Prospect databases**: upload a client's databases (several sheets, 20 MB and more, read in a stream in the background with progress). Columns are found automatically; add to the client's databases or replace them (with a confirmation); shows rows read, phone numbers indexed and calls newly matched; per-client batch list; roll back.
+- **Billing**: upload the billing sheet; orders are added or updated by invoice number; preview with differences and flagged totals; history and rollback (latest upload); the Overview shows when billing was last uploaded.
+- **Mappings and settings**: agent to Representative, email sender to client (domain, mailbox or sequence), time zone rules, schedules and break rules, the agent-fallback rule, the start date, new Representatives and clients.
+- **Jobs**: re-run any job for a date range; recent runs. **Audit log**: every upload, rollback, job run and setting change.
+- Template downloads for every upload (`GET /api/admin/templates/<name>`). Uploaded files are kept in private storage (`UPLOAD_DIR`, never served directly).
+- Endpoints (all admin only): `/api/admin/files/{assignments,billing,prospects}/…`, `/api/admin/{mappings,settings,agents,apollo-rules,tz-rules,representatives,clients,data-quality,audit,templates}`.
+- `backend/.env` also needs `UPLOAD_DIR` (default `./data/uploads`).
 
 ## What Phase 3 adds
 - **Overview** (opens first), **Representative View** and **Client View**, in the prototype's purple look (light and dark): date range and quick periods, KPI cards with the change against the days before, expandable and sortable calls tables, weekly revenue with hover lists, call timing and breaks (daily and weekly), Representative and client profiles with call recordings (prospect lines, search, filters) and a client's emails.

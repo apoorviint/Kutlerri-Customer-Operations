@@ -41,6 +41,7 @@ export default function OverviewView() {
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
                   </Section>
+                  <p className="pnote" data-testid="billing-last-upload">Billing sheet last uploaded: {r.lastUpload ? new Date(r.lastUpload).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "not uploaded yet"}</p>
 
                   <Section title="Calls" cls="ov-call">
                     <Metric lead k="Total dials" v={n0(c.dials)} />

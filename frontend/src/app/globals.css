@@ -256,3 +256,56 @@ th.sub{font-weight:600;color:var(--muted)}
 
 /* on a narrow screen, label every other hour so the clock labels do not run into each other */
 @media (max-width:760px){.tm-ticks span:nth-child(even){display:none}}
+
+/* ── admin console ── */
+.adminlink{color:#fff;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:5px 10px}
+.adminlink:hover{background:rgba(255,255,255,.12)}
+.adm-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.adm-tabs button{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 18px;font:700 14px var(--font-ui);cursor:pointer;color:var(--ink)}
+.adm-tabs button:hover{border-color:var(--primary-soft)}
+.adm-tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.adm table th,.adm table td{text-align:left;white-space:normal;font-family:var(--font-ui);vertical-align:top}
+.adm table th{min-width:0}
+.adm .panel{margin-bottom:18px}
+.adm .panel>header h3,.adm-sec>summary h3{margin:0}
+.adm h4{margin:18px 0 8px;font:700 13px var(--font-ui)}
+.adm-sec>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none}
+.adm-sec>summary::-webkit-details-marker{display:none}
+.adm-sec>summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.adm-sec[open]>summary::before{transform:rotate(90deg)}
+.adm-body{margin-top:14px}
+.cl-count.warn{background:color-mix(in srgb,#f59e0b 22%,transparent);color:#b45309}
+.adm-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.adm-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin:12px 0}
+.adm-form label,.inl{display:grid;gap:5px;font:600 12px var(--font-ui);color:var(--muted)}
+.inl{display:flex;align-items:center;gap:8px}
+.adm-form input,.adm-form select,.adm select,.adm input[type=time]{padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--ink);font:500 13px var(--font-ui);min-width:0;max-width:100%}
+.adm-form input[type=number]{width:110px}
+.adm-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font:700 13px var(--font-ui);cursor:pointer;color:var(--ink)}
+.btn:hover:not(:disabled){border-color:var(--primary-soft)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.small{padding:5px 10px;font-size:12px}
+.link{background:none;border:0;padding:0;color:var(--link);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}
+.filepick{display:flex;align-items:center;gap:10px}
+.filepick input{max-width:340px}
+.check{display:flex;gap:8px;align-items:flex-start;font-weight:600;margin:8px 0}
+.small{font-size:12px;color:var(--muted)}
+.mono{font-family:var(--font-num)}
+.note-box{border:1px solid var(--border);border-left-width:4px;border-radius:10px;padding:10px 14px;margin:10px 0;background:var(--card);font-size:13px}
+.note-box ul{margin:6px 0 0 18px;padding:0}
+.note-box.bad{border-left-color:#dc2626;background:color-mix(in srgb,#dc2626 7%,var(--card))}
+.note-box.warn{border-left-color:#f59e0b;background:color-mix(in srgb,#f59e0b 8%,var(--card))}
+.note-box.ok{border-left-color:#16a34a;background:color-mix(in srgb,#16a34a 7%,var(--card))}
+.note-box.info{border-left-color:var(--primary)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font:700 11px var(--font-ui);border:1px solid var(--border);text-transform:capitalize}
+.pill.ok{color:#16a34a;border-color:rgba(22,163,74,.5)}
+.pill.bad{color:#dc2626;border-color:rgba(220,38,38,.5)}
+.pill.warn{color:#b45309;border-color:rgba(245,158,11,.6)}
+.pill.info{color:var(--primary);border-color:var(--primary)}
+.pill.na{color:var(--muted)}
+.adm-preview{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+.adm-preview h4{margin-top:0}
+@media (max-width:760px){.top{padding-inline:16px}.wrap{padding-inline:16px}.adm-tabs button{flex:1 1 45%}}

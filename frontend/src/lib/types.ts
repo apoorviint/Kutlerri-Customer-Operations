@@ -29,7 +29,7 @@ export type Meta = {
 export type Overview = {
   range: Range; weeksOfCalls: number;
   activeClients: { count: number; of: number };
-  revenue: { total: number; orders: number; avgOrder: number | null; weeklyRunRate: number | null; weeks: number };
+  revenue: { total: number; orders: number; avgOrder: number | null; weeklyRunRate: number | null; weeks: number; lastUpload: string | null };
   calls: { dials: number; connects: number; meaningful: number; mql: number; mqlOver90: number; mqlUnder90: number; answered: number; notAnswered: number };
   emails: { sent: number; delivered: number; opened: number; clicked: number; replied: number; bounced: number; unsubscribed: number; clientsWithData: number };
   byClient: { clientId: number; name: string; dials: number; connects: number; meaningful: number; mqls: number; orders: number; revenue: number; emailsSent: number; opened: number; replied: number }[];

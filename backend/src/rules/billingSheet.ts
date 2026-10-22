@@ -111,9 +111,12 @@ export function parseBillingSheet(grid: unknown[][]): ParsedBilling {
   return out;
 }
 
-/** Total should equal Subtotal + Tax + Tip + Fee − Discount. Returns how far off it is, or null when it matches (or there is no subtotal to check). */
+/**
+ * Total should equal Subtotal + Tax + Tip + Fee − Discount. Returns how far off it is, or null when it matches, or when there is
+ * nothing to check against (no subtotal, or no tax / tip / fee / discount given at all, as for the orders carried over from the prototype).
+ */
 export function totalMismatch(o: { subtotal: number | null; tax: number | null; tip: number | null; fee: number | null; discount: number | null; total: number }): number | null {
-  if (o.subtotal === null) return null;
+  if (o.subtotal === null || (o.tax === null && o.tip === null && o.fee === null && o.discount === null)) return null;
   const expected = o.subtotal + (o.tax ?? 0) + (o.tip ?? 0) + (o.fee ?? 0) - (o.discount ?? 0);
   const diff = Math.round((o.total - expected) * 100) / 100;
   return Math.abs(diff) > 0.01 ? diff : null;

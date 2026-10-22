@@ -184,6 +184,10 @@ adminRouter.delete("/tz-rules/:id", async (req, res) => {
 
 const Hm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "use 24-hour HH:MM");
 const Schedule = z.object({ start: Hm, breakStart: Hm, breakEnd: Hm });
+/** Key order must not make two equal settings look different. */
+const canon = (v: unknown): unknown => (Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([k, x]) => [k, canon(x)])) : v);
+const sameValue = (a: unknown, b: unknown) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
+
 const SettingsPatch = z.object({
   backfillStart: Day.optional(),
   agentFallback: z.boolean().optional(),
@@ -202,7 +206,7 @@ adminRouter.put("/settings", async (req, res) => {
   const before = await loadSettings();
   const changed: string[] = [];
   for (const [key, value] of Object.entries(p.data)) {
-    if (value === undefined || JSON.stringify(before[key as keyof typeof before]) === JSON.stringify(value)) continue;
+    if (value === undefined || sameValue(before[key as keyof typeof before], value)) continue;
     await db.setting.upsert({ where: { key }, create: { key, value: value as never }, update: { value: value as never } });
     changed.push(key);
     await audit(who(req), "settings.update", key, { from: before[key as keyof typeof before], to: value });

@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public body?: Record<string, unknown>) {
     super(message);
   }
 }
@@ -11,7 +11,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/auth/login")) {
     window.location.href = "/login";
   }
-  if (!res.ok) throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`);
+  if (!res.ok) throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body);
   return body as T;
 }
 

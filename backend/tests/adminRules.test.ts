@@ -81,6 +81,8 @@ describe("billing sheet", () => {
     expect(totalMismatch({ subtotal: 500, tax: 40, tip: 50, fee: 10, discount: 0, total: 600 })).toBeNull();
     expect(totalMismatch({ subtotal: 500, tax: 40, tip: 50, fee: 10, discount: 25, total: 600 })).toBe(25);
     expect(totalMismatch({ subtotal: null, tax: null, tip: null, fee: null, discount: null, total: 600 })).toBeNull();
+    expect(totalMismatch({ subtotal: 100, tax: null, tip: null, fee: null, discount: null, total: 120 })).toBeNull(); // no breakdown given: nothing to compare
+    expect(totalMismatch({ subtotal: 100, tax: 8, tip: null, fee: null, discount: null, total: 120 })).toBe(12);
     expect(totalMismatch({ subtotal: 100, tax: null, tip: null, fee: null, discount: null, total: 100.005 })).toBeNull(); // a cent of rounding
   });
   it("dates and money cells", () => {

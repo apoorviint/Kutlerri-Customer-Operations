@@ -119,11 +119,14 @@ export async function overview(range: Range) {
   // a client is active when it has calls, orders or emails in these dates
   const byClient = rows.filter((r) => r.dials || r.orders || r.emailsSent).sort((a, b) => b.dials - a.dials || b.revenue - a.revenue);
 
+  // the billing sheet is uploaded by hand, so the screen says when that last happened
+  const lastBilling = await db.billingUpload.findFirst({ where: { status: "committed" }, orderBy: { uploadedAt: "desc" }, select: { uploadedAt: true } });
+
   return {
     range,
     weeksOfCalls: new Set(weeksN).size,
     activeClients: { count: byClient.length, of: customers.length },
-    revenue: { total: weekly.revenue, orders: weekly.orders, avgOrder: weekly.avgOrder, weeklyRunRate: weekly.runRate, weeks: weekly.weeks.length },
+    revenue: { total: weekly.revenue, orders: weekly.orders, avgOrder: weekly.avgOrder, weeklyRunRate: weekly.runRate, weeks: weekly.weeks.length, lastUpload: lastBilling?.uploadedAt ?? null },
     calls: { dials: totals.calls, connects: totals.connects, meaningful: totals.meaningful, mql: totals.mql, mqlOver90: totals.mqlOver90, mqlUnder90: totals.mqlUnder90, answered: totals.answered, notAnswered: totals.notAnswered },
     emails: { ...email, delivered: email.sent - email.bounced, clientsWithData: coverage[0].n },
     byClient,

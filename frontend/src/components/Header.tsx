@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useFilters } from "@/lib/filters";
@@ -38,7 +39,12 @@ export default function Header() {
           <label htmlFor="dateTo">To</label>
           <input type="date" id="dateTo" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
         </div>
-        {me && <span className="who-am-i">{me.email}<button onClick={signOut}>Sign out</button></span>}
+        {me && (
+          <span className="who-am-i">
+            {me.role === "ADMIN" && <Link href="/admin" className="adminlink">Admin console</Link>}
+            {me.email}<button onClick={signOut}>Sign out</button>
+          </span>
+        )}
       </div>
     </header>
   );
