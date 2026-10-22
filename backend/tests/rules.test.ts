@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveCallZone, shiftDate, toUtc, ZONES, eachDay, dateInZone, type TzRule } from "../src/rules/time.js";
-import { isConnect, isMeaningful, isMqlOver90, last10, mapDirection, mapDisposition, agentKey } from "../src/rules/calls.js";
+import { isConnect, isMeaningful, isMqlOver90, last10, mapDisposition, agentKey } from "../src/rules/calls.js";
 import { resolveEmailClient, senderDomain, type EmailRule } from "../src/rules/emails.js";
 
 const ET = ZONES.eastern;
@@ -150,19 +150,6 @@ describe("email to client", () => {
     expect(resolveEmailClient(rules, { from: "x@unknown.com", sequence: null })).toBeNull();
     expect(resolveEmailClient(rules, { from: null, sequence: null })).toBeNull();
     expect(senderDomain("nonsense")).toBeNull();
-  });
-});
-
-describe("call direction (only calls made from our side count)", () => {
-  it.each([
-    ["outbound", "outbound"], ["Outbound", "outbound"], ["outgoing", "outbound"], ["OUT", "outbound"], ["outbound_call", "outbound"],
-    ["inbound", "inbound"], ["Incoming", "inbound"], ["missed", "inbound"], ["inbound-call", "inbound"],
-  ])("%s -> %s", (raw, direction) => expect(mapDirection(raw)).toEqual({ direction, unknown: false }));
-  it("not said is not unknown; a word we do not know is reported, not guessed", () => {
-    expect(mapDirection(null)).toEqual({ direction: null, unknown: false });
-    expect(mapDirection(undefined)).toEqual({ direction: null, unknown: false });
-    expect(mapDirection("  ")).toEqual({ direction: null, unknown: false });
-    expect(mapDirection("sideways")).toEqual({ direction: null, unknown: true });
   });
 });
 

@@ -3,6 +3,7 @@ import { db } from "../db.js";
 import { config } from "../config.js";
 import { addDays, todayIn, ZONES } from "../rules/time.js";
 import { ingestCallsWindow, loadAgentIds, type WindowResult } from "./ingestCalls.js";
+import { apiTotal } from "./callLogsApi.js";
 import { ingestEmailsWindow } from "./ingestEmails.js";
 import { attributeAndRollup, rebuildRollups } from "./attribution.js";
 import { recomputeCallTimes, recomputeEmailClients } from "./recompute.js";
@@ -55,7 +56,6 @@ async function walkDays(
   const totals = zero();
   const warnings: string[] = [];
   const unknown: Record<string, number> = {};
-  const unknownDirections: Record<string, number> = {};
   let passesOver1 = 0;
   const days: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
@@ -67,12 +67,10 @@ async function walkDays(
     if (w.distinct < w.total) warnings.push(`${day}: received ${w.distinct} of ${w.total} rows even after retrying`);
     if (w.skipped) warnings.push(`${day}: ${w.skipped} rows could not be read (${w.errors[0] ?? "unknown reason"})`);
     for (const [k, n] of Object.entries(w.unknownDispositions)) unknown[k] = (unknown[k] ?? 0) + n;
-    for (const [k, n] of Object.entries(w.unknownDirections)) unknownDirections[k] = (unknownDirections[k] ?? 0) + n;
     await touchLock(name);
     await db.syncRun.update({ where: { id: runId }, data: { ...totals, details: { lastCompletedDay: day, daysDone: i + 1, daysTotal: days.length } } });
   }
   if (Object.keys(unknown).length) warnings.push(`Unrecognised dispositions kept as "no disposition": ${JSON.stringify(unknown)}`);
-  if (Object.keys(unknownDirections).length) warnings.push(`Unrecognised call directions (treated as outbound): ${JSON.stringify(unknownDirections)}`);
   return { totals, warnings: warnings.slice(0, 20), details: { daysTotal: days.length, daysWithRetries: passesOver1, unknownDispositions: unknown }, from, to, kind: "" };
 }
 
@@ -84,10 +82,18 @@ async function runCalls(runId: string, opts: JobOptions): Promise<Outcome> {
   // an explicit range, or "from a couple of days before the newest stored call" (everything since the start date if empty)
   const from = opts.from ?? (newest[0].d ? addDays(newest[0].d, -OVERLAP_DAYS) : settings.backfillStart);
   const to = opts.to ?? addDays(today, 1);
-  const start = from < settings.backfillStart ? settings.backfillStart : from;
+  let start = from < settings.backfillStart ? settings.backfillStart : from;
+  // catch-up: if the API holds more rows since the start date than we do (older rows that appeared late), read everything again
+  let catchUp: Record<string, number> | null = null;
+  if (!opts.from && newest[0].d && start > settings.backfillStart) {
+    const [mine] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM calls WHERE local_date >= ${settings.backfillStart}::date AND local_date <= ${to}::date`;
+    const theirs = await apiTotal("/v1/calls", settings.backfillStart, to);
+    if (theirs > mine.n) { catchUp = { stored: mine.n, api: theirs }; start = settings.backfillStart; }
+  }
   const o = await walkDays("calls", runId, start, to, (day) => ingestCallsWindow(ctx, day, day));
   o.kind = opts.from ? "range" : newest[0].d ? "incremental" : "backfill";
   // a call's shift day is the day it was logged or the day before, so refresh one day either side
+  if (catchUp) o.details.catchUp = catchUp;
   o.details.attribution = await attributeAndRollup(addDays(start, -1), addDays(to, 1));
   return o;
 }
@@ -98,8 +104,17 @@ async function runEmails(runId: string, opts: JobOptions): Promise<Outcome> {
   const newest = await db.$queryRaw<{ d: string | null }[]>`SELECT to_char(max(sent_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS d FROM emails`;
   const from = opts.from ?? (newest[0].d ? addDays(newest[0].d, -OVERLAP_DAYS) : settings.backfillStart);
   const to = opts.to ?? addDays(todayIn(ZONES.eastern), 1);
-  const o = await walkDays("emails", runId, from < settings.backfillStart ? settings.backfillStart : from, to, (day) => ingestEmailsWindow(ctx, day, day));
+  let start = from < settings.backfillStart ? settings.backfillStart : from;
+  // catch-up: other clients' older emails may appear in the API later; if it holds more than we do, read everything again
+  let catchUp: Record<string, number> | null = null;
+  if (!opts.from && newest[0].d && start > settings.backfillStart) {
+    const [mine] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM emails WHERE sent_date_pacific >= ${settings.backfillStart}::date AND sent_date_pacific <= ${to}::date`;
+    const theirs = await apiTotal("/v1/emails", settings.backfillStart, to);
+    if (theirs > mine.n) { catchUp = { stored: mine.n, api: theirs }; start = settings.backfillStart; }
+  }
+  const o = await walkDays("emails", runId, start, to, (day) => ingestEmailsWindow(ctx, day, day));
   o.kind = opts.from ? "range" : newest[0].d ? "incremental" : "backfill";
+  if (catchUp) o.details.catchUp = catchUp;
   return o;
 }
 

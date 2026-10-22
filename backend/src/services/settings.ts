@@ -10,7 +10,6 @@ export type Settings = {
   emailZone: string;
   agentFallback: boolean;
   agentFallbackExcludedLines: string[];
-  outboundOnly: boolean;
   timing: TimingSettings;
   prospectShow: Record<string, string[]>;
 };
@@ -28,9 +27,6 @@ export const SETTING_DEFAULTS: Settings = {
   agentFallback: false,
   // Lines that must stay Unassigned even when the rule above is turned on: Dave's (346) 423-3909 and (682) 356-3013.
   agentFallbackExcludedLines: ["3464233909", "6823563013"],
-  // Only calls made from our side count. A call the source says is inbound is kept out of the dashboards;
-  // a call whose direction is not given (all of them, until the call-logs API sends it) is treated as outbound.
-  outboundOnly: true,
   // Call timing and breaks: schedules as logged (Rasa starts 6:30 PM, break 9:30 to 10:30 PM; everyone else 7:30 PM, 10:30 to 11:30 PM)
   timing: DEFAULT_TIMING,
   // What to show for a prospect in a recording row, per client (a phone number is added where listed). Name, title and company are always shown.

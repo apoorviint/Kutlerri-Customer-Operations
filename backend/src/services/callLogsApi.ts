@@ -64,3 +64,8 @@ export async function fetchWindow(
   }
   return { distinct: seen.size, total, passes };
 }
+
+/** How many rows the API says it has for a date window (one tiny request). */
+export async function apiTotal(path: "/v1/calls" | "/v1/emails", from: string, to: string): Promise<number> {
+  return (await getPage(path, { page: "1", per_page: "1", date_from: from, date_to: to })).total;
+}

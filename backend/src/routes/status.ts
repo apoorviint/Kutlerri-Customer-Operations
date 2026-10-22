@@ -13,7 +13,7 @@ const fourDigits = (p: string | null) => (p ? `…${p.slice(-4)}` : "(no line)")
 statusRouter.get("/", requireUser, async (_req, res) => {
   const settings = await loadSettings();
   const since = settings.backfillStart;
-  const [calls, emails, noRep, callRuns, emailRuns, tzRules, attribution, unassigned, fallback, coverage, direction] = await Promise.all([
+  const [calls, emails, noRep, callRuns, emailRuns, tzRules, attribution, unassigned, fallback, coverage] = await Promise.all([
     db.$queryRaw<{ total: number; newest: Date | null; first_shift: string | null; last_shift: string | null }[]>`
       SELECT count(*)::int AS total, max(c.occurred_at) AS newest,
              to_char(min(c.shift_date), 'YYYY-MM-DD') AS first_shift, to_char(max(c.shift_date), 'YYYY-MM-DD') AS last_shift
@@ -42,9 +42,6 @@ statusRouter.get("/", requireUser, async (_req, res) => {
       SELECT to_char(max(la.valid_to), 'YYYY-MM-DD') AS through, count(DISTINCT la.upload_id)::int AS uploads
       FROM line_assignments la JOIN assignment_uploads u ON u.id = la.upload_id
       WHERE la.superseded_by_upload_id IS NULL AND u.status = 'committed' AND la.priority > 0`,
-    db.$queryRaw<{ unknown: number; inbound: number }[]>`
-      SELECT count(*) FILTER (WHERE direction IS NULL)::int AS unknown, count(*) FILTER (WHERE direction = 'inbound')::int AS inbound
-      FROM calls WHERE shift_date >= ${since}::date`,
   ]);
   const lastOk = async (source: string) => db.syncRun.findFirst({ where: { source, status: { in: ["ok", "warning"] } }, orderBy: { finishedAt: "desc" }, select: { finishedAt: true } });
   const [okCalls, okEmails] = await Promise.all([lastOk("calls"), lastOk("emails")]);
@@ -74,12 +71,6 @@ statusRouter.get("/", requireUser, async (_req, res) => {
       `${through ? ` (the sheet covers up to ${through})` : ""}. Busiest lines: ${lines}. Upload the next sheet to include them.`,
     );
   }
-  if (settings.outboundOnly && direction[0].unknown > 0) {
-    warnings.push(
-      `The call-logs API does not say whether a call is inbound or outbound, so ${direction[0].unknown.toLocaleString()} calls are counted as outbound. ` +
-      `Inbound calls (people calling back) may be included until the API sends a direction.`,
-    );
-  }
   if (byStatus.CONFLICT) warnings.push(`${byStatus.CONFLICT.toLocaleString()} calls are on a shared line and could not be decided by their agent`);
   if (fallback[0].n) {
     notices.push(
@@ -95,7 +86,6 @@ statusRouter.get("/", requireUser, async (_req, res) => {
       total: calls[0].total, newestCallAt: calls[0].newest, firstShiftDate: calls[0].first_shift, lastShiftDate: calls[0].last_shift,
       lastSyncedAt: okCalls?.finishedAt ?? null, lastRun: callRuns[0] ?? null,
       byClient: byStatus.CLIENT ?? 0, internal: byStatus.INTERNAL ?? 0, unassigned: byStatus.UNASSIGNED ?? 0, undecided: byStatus.CONFLICT ?? 0,
-      inbound: byStatus.INBOUND ?? 0, directionUnknown: direction[0].unknown,
     },
     emails: {
       total: emails[0].total, newestSentAt: emails[0].newest, withoutClient: emails[0].unmapped, internal: emails[0].internal,

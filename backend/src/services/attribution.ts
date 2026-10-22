@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { db } from "../db.js";
-import { attributeCall, INBOUND, type Assignment, type Attribution } from "../rules/assignments.js";
+import { attributeCall, type Assignment, type Attribution } from "../rules/assignments.js";
 import { CONNECT_KEYS, DISPOSITION_KEYS, MEANINGFUL_SECONDS } from "../rules/calls.js";
 import { loadActiveAssignments } from "./assignments.js";
 import { loadSettings } from "./settings.js";
@@ -37,8 +37,8 @@ export async function attributeCalls(from?: string, to?: string, onProgress?: (d
   // pass 1: calls on lines the sheet lists
   let last = "";
   for (;;) {
-    const calls = await db.$queryRaw<{ id: string; phone: string | null; shift: string; agent_id: number | null; direction: string | null }[]>`
-      SELECT id, justcall_no10 AS phone, to_char(shift_date, 'YYYY-MM-DD') AS shift, agent_id, direction
+    const calls = await db.$queryRaw<{ id: string; phone: string | null; shift: string; agent_id: number | null }[]>`
+      SELECT id, justcall_no10 AS phone, to_char(shift_date, 'YYYY-MM-DD') AS shift, agent_id
       FROM calls WHERE id > ${last}
         ${from ? Prisma.sql`AND shift_date >= ${from}::date` : Prisma.empty}
         ${to ? Prisma.sql`AND shift_date <= ${to}::date` : Prisma.empty}
@@ -47,8 +47,7 @@ export async function attributeCalls(from?: string, to?: string, onProgress?: (d
     last = calls[calls.length - 1].id;
     for (const c of calls) {
       const repId = c.agent_id !== null ? (agentRep.get(c.agent_id) ?? null) : null;
-      // only calls made from our side count: one the source calls inbound is not attributed to anyone
-      const att = settings.outboundOnly && c.direction === "inbound" ? INBOUND : attributeCall(c.phone ? (byPhone.get(c.phone) ?? []) : [], c.shift, repId);
+      const att = attributeCall(c.phone ? (byPhone.get(c.phone) ?? []) : [], c.shift, repId);
       if (att.status === "CLIENT" && repId !== null) {
         const key = `${repId}|${c.shift}`;
         (usedClients.get(key) ?? usedClients.set(key, new Set()).get(key)!).add(att.clientId!);

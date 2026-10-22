@@ -161,7 +161,6 @@ model Call {
   shiftDate        DateTime @map("shift_date") @db.Date // 5 PM IST to 5 PM IST
   dispositionRaw   String?  @map("disposition_raw")
   dispositionKey   String?  @map("disposition_key") // null = no disposition (counted as No Answer later)
-  direction        String? // 'outbound' | 'inbound'; null = the source did not say (treated as outbound until it does)
   providerSyncedAt DateTime? @map("provider_synced_at")
   ingestedAt       DateTime @default(now()) @map("ingested_at")
   updatedAt        DateTime @default(now()) @map("updated_at")

@@ -25,7 +25,7 @@ Each item says what was assumed, what it is based on, and what would change it.
 - For Rasa, 17 Aug to 9 Oct, the stored data equals the prototype on every figure (519 sent, 68 opened, 3 replied, 7 bounced, 3 unsubscribed).
 
 ## Calls: fields and rules
-- **The API has no call direction.** All rows are assumed to be outbound.
+- **Calls have no direction and need none.** Every call counts normally under the person's and client's name (decision taken).
 - **Agents** are matched on a lower-cased name (the API writes "krissh singh"). The seeded mapping is the one in the prompt. **A new agent, "Baishnavi Sahoo" (525 calls, 12 to 17 Oct), is not mapped to a Representative** and is shown as a warning until an admin maps them.
 - **Dispositions:** "Dispositions: X" is mapped to the 11 keys. An empty value stays empty (it counts as No Answer later). A new text is stored as-is, not guessed, and reported on the sync run.
 - Connect, answered, meaningful (strictly over 90 s) and MQL rules are in `backend/src/rules/calls.ts` and covered by tests.
@@ -68,7 +68,7 @@ Who-dialed-for-whom assignments and attribution, daily rollups, billing, prospec
    - otherwise Unassigned.
 
    Dave's (346) 423-3909 and (682) 356-3013 are in `agentFallbackExcludedLines`, so they stay Unassigned even with the rule on, as the prompt says.
-5. **Only outbound calls count (decision taken).** The call-logs API **sends no direction** (and ignores a direction filter), so inbound calls cannot be told apart yet and **every call is counted as outbound**; the status page says so. As soon as the API sends a direction (read from `direction`, `call_direction`, `call_type` or `type`; "inbound", "incoming" or "missed" mean inbound), inbound calls get the status `INBOUND`, belong to no client and are never counted (setting `outboundOnly`, default on). A direction word we do not recognise is counted as outbound and reported on the sync run. **Open: the API owner needs to add the field** (see the Phase 2 report).
+5. **Every call counts (decision taken).** There is no inbound/outbound split: all calls in the API count normally under the Representative and client of their line and shift day.
 
 ## Daily counts
 `daily_rollups` holds, per shift day, client, Representative, agent and line: calls, meaningful conversations (a connect longer than 90 seconds), MQLs over 90 seconds, and a count per disposition (plus "no disposition" and "unrecognised text"). Only calls that belong to a client are counted. They are rebuilt for the affected days after every calls sync, after an upload or rollback, and after a time rule changes.
@@ -88,7 +88,7 @@ The 2,569 are the calls the prototype counted through the fallback rule, which i
 
 With the rule on, every one of the prototype's 49,971 client calls is in the data with the **same client and the same Representative**, so the attribution rules themselves reproduce the prototype. The remaining differences are data, not rules:
 1. **+8 connects, +3 meaningful, +1 MQL:** 13 calls received a disposition after the prototype's 13 Oct snapshot (8 became connects). The API holds the newer values.
-2. **About 900 calls (1.9%) that are in the API but not in the workbook, on lines the sheet lists.** 83% last 0 seconds, and 83% were to a contact the same line had already called in the previous 14 days (40% for ordinary calls), which is what call-backs from prospects look like, so they are probably inbound. They are counted until the API sends a direction (see item 5 above).
+2. **About 900 calls (1.9%) that are in the API but not in the workbook, on lines the sheet lists.** Mostly 0-second calls, and they look like call-backs from prospects. They are counted like any other call, so our numbers are slightly higher than the prototype's.
 
 ## Known sheet issues, as expected
 - **Andrew's two numbers swap clients** between the weeks of Sep 21 and Sep 28 (…2756 and …9521). Imported as written; reported when the sheet is previewed.
@@ -113,9 +113,9 @@ With the rule on, every one of the prototype's 49,971 client calls is in the dat
 | Rasa emails: sent / opened / replied / bounced / unsubscribed | 519 / 68 / 3 / 7 / 3 (prototype) | **519 / 68 / 3 / 7 / 3 (exact)** |
 | Sep 10 shift, calls the workbook also has | 274 | **274 (exact)** |
 | Breaks on Fri 9 Oct | David 1h 45m, Nia 1h 34m, Akil 1h 27m, Hiya 1h 43m, Steven 3h 29m, Rohit none | **Nia, Akil, Hiya, Steven and Rohit exact**; David 1h 26m (see below) |
-| Call numbers | see Phase 2 | as Phase 2: lower by the calls left out on purpose, higher by the probable inbound calls |
+| Call numbers | see Phase 2 | as Phase 2: lower by the calls left out on purpose, higher by the extra API calls counted |
 
-- **Why David (and Robin and Kevin) differ.** Each has a single **0-second call that the prototype's workbook does not have**, inside the break (David 9:49 PM, Robin 10:32 PM, Kevin 10:49 PM), which splits the break. These are the probable inbound calls described in Phase 2. The break detection itself is exact. They will disappear once the API sends a call direction.
+- **Why David (and Robin and Kevin) differ.** Each has a single **0-second call that the prototype's workbook does not have**, inside the break (David 9:49 PM, Robin 10:32 PM, Kevin 10:49 PM), which splits the break. These are the extra API calls described in Phase 2, and they are counted. The break detection itself is exact.
 - **Emails:** the call-logs API only has Rasa's emails, so the other five clients show no emails and the Overview says "Email data is available for 1 of 6 clients so far". The prototype's 7,469 emails across six clients cannot be reproduced from this API. **Email text and replies are not in the API either**: the viewer says so instead of showing nothing. When they arrive, the text is cleaned on the server and shown in a sandboxed frame; a reply shows only when Apollo marks the email as replied.
 
 ## Data that is not final yet (comes from the reference file until the Phase 4 uploads exist)
@@ -127,4 +127,4 @@ With the rule on, every one of the prototype's 49,971 client calls is in the dat
 - Quick periods ("Last week", "This month", …) count from today's date in IST. The range starts on everything there is data for, as in the prototype.
 - Names read "Sales Representative" in the two table titles, as in your prompt, and "Representative" everywhere else.
 - The Representative View opens the same row-by-row breakdowns as the prototype; no charts were added (the prototype has none).
-- The earlier "Data status" page is gone from the screen. `GET /api/status` still reports stale feeds, unassigned calls and the missing call direction; these move into the admin data-quality panel in Phase 4.
+- The earlier "Data status" page is gone from the screen. `GET /api/status` still reports stale feeds, unassigned calls; these move into the admin data-quality panel in Phase 4.

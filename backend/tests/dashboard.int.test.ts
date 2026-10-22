@@ -192,7 +192,7 @@ describe.skipIf(!HAS_DB)("call recordings", () => {
     await db.call.create({
       data: {
         id: callId, justcallNo10: "9990001111", contactNo10: o.contact ?? `55500000${String(n).padStart(2, "0")}`, durationSec: o.dur ?? 30, localDate: new Date(shift), localTime: "12:00:00", tzUsed: "America/New_York",
-        occurredAt: new Date(`${shift}T${o.time ?? "12:00:00"}Z`), shiftDate: new Date(shift), dispositionKey: o.disp === undefined ? null : o.disp, direction: null,
+        occurredAt: new Date(`${shift}T${o.time ?? "12:00:00"}Z`), shiftDate: new Date(shift), dispositionKey: o.disp === undefined ? null : o.disp,
         recordingUrl: o.url === undefined ? `https://rec.example.com/${callId}` : o.url, raw: {},
       },
     });

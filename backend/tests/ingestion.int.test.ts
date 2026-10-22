@@ -181,7 +181,7 @@ describe.skipIf(!HAS_DB)("calls", () => {
     expect(fake.requests[0].from).toBe("2026-08-17");
     fake.requests.length = 0;
     await jobs.runJob("calls");
-    expect(fake.requests[0].from).toBe("2026-10-07");
+    expect(fake.requests.filter((q) => q.perPage > 1)[0].from).toBe("2026-10-07");
   });
 
   it("new calls are attributed and counted as soon as the job has read them", async () => {
@@ -202,35 +202,6 @@ describe.skipIf(!HAS_DB)("calls", () => {
     expect(rollup).toHaveLength(1);
     expect(rollup[0]).toMatchObject({ calls: 1, dMql: 1 });
     expect(((await lastRun("calls")).details as any).attribution.attribution.scanned).toBeGreaterThanOrEqual(2);
-  });
-
-  it("only calls made from our side count: one the source calls inbound is kept out of the dashboards", async () => {
-    const assignments = await import("../src/services/assignments.js");
-    const sheet = await import("../src/rules/assignmentSheet.js");
-    await assignments.commitAssignments(
-      sheet.parseAssignmentSheet([["Week", "Representative", "Client", "Phone number"], ["2026-10-05", "Phoebe", "HotChi", "(773) 398-6668"]], { anchor: "2026-10-22" }),
-      { uploadedBy: "test" },
-    );
-    fake.calls = [
-      callItem(1, { direction: "outbound" }),
-      callItem(2, { direction: "inbound", time: "14:18:00" }),
-      callItem(3, { time: "14:19:00" }), // no direction given: counted as outbound (the API sends none today)
-      callItem(4, { direction: "sideways", time: "14:20:00" }), // not understood: counted as outbound, and reported
-      callItem(5, { type: "Incoming", time: "14:21:00" }), // the direction may arrive under another name
-    ];
-    await jobs.runJob("calls", { from: "2026-10-09", to: "2026-10-09" });
-    const rows = await db.$queryRaw<{ id: string; direction: string | null; status: string }[]>`
-      SELECT c.id, c.direction, a.status FROM calls c JOIN call_attribution a ON a.call_id = c.id ORDER BY c.id`;
-    expect(rows.map((r) => [r.id, r.direction, r.status])).toEqual([
-      ["1", "outbound", "CLIENT"], ["2", "inbound", "INBOUND"], ["3", null, "CLIENT"], ["4", null, "CLIENT"], ["5", "inbound", "INBOUND"],
-    ]);
-    expect((await db.dailyRollup.findMany()).reduce((n, r) => n + r.calls, 0)).toBe(3); // the two inbound calls are not counted
-    expect((await lastRun("calls")).error).toMatch(/sideways/);
-
-    // with the switch off, direction is ignored
-    await db.setting.update({ where: { key: "outboundOnly" }, data: { value: false } });
-    await jobs.runJob("attribute-calls");
-    expect((await db.dailyRollup.findMany()).reduce((n, r) => n + r.calls, 0)).toBe(5);
   });
 
   it("the same job never runs twice at once", async () => {
@@ -290,6 +261,27 @@ describe.skipIf(!HAS_DB)("emails", () => {
     expect(await db.email.count()).toBe(2);
     expect(await lastRun("emails")).toMatchObject({ updated: 1 });
     expect(await db.email.findUniqueOrThrow({ where: { id: "m1" } })).toMatchObject({ opened: true, replied: true });
+  });
+
+  it("an older email that shows up in the API later (another client's) is picked up by the next normal run", async () => {
+    fake.emails = [emailItem("m1", { sent_at: "2026-10-09T18:00:00.000Z" })];
+    await jobs.runJob("emails");
+    expect(await db.email.count()).toBe(1);
+    fake.emails.push(emailItem("old1", { sent_at: "2026-09-15T18:00:00.000Z", from_email: "x@eatcedarscatering.com" }));
+    await jobs.runJob("emails"); // no range: the usual window starts two days back, so only the catch-up check can find it
+    expect(await db.email.count()).toBe(2);
+    expect((await lastRun("emails")).details).toMatchObject({ catchUp: { stored: 1, api: 2 } });
+    fake.requests.length = 0;
+    await jobs.runJob("emails");
+    expect(fake.requests.every((q) => q.perPage === 1 || q.from! >= "2026-10-07")).toBe(true); // nothing missing: no full re-read
+  });
+
+  it("an older call that shows up later is picked up too", async () => {
+    fake.calls = [callItem(1, { date: "2026-10-09" })];
+    await jobs.runJob("calls");
+    fake.calls.push(callItem(2, { date: "2026-09-20" }));
+    await jobs.runJob("calls");
+    expect((await db.call.findMany()).map((c) => c.id).sort()).toEqual(["1", "2"]);
   });
 
   it("an email without a sent time is stored but not counted as sent", async () => {
