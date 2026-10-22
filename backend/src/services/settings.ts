@@ -1,16 +1,29 @@
 import { db } from "../db.js";
 import { SHIFT_START_HOUR, ZONES } from "../rules/time.js";
 
+export type Settings = {
+  backfillStart: string;
+  shiftStartHour: number;
+  shiftZone: string;
+  callDefaultZone: string;
+  emailZone: string;
+  agentFallback: boolean;
+  agentFallbackExcludedLines: string[];
+};
+
 /** Settings an admin can change later. Missing ones fall back to these defaults. */
-export const SETTING_DEFAULTS = {
+export const SETTING_DEFAULTS: Settings = {
   backfillStart: "2026-08-17", // nothing earlier is ingested or shown
   shiftStartHour: SHIFT_START_HOUR, // a day runs from 5 PM to just before 5 PM
   shiftZone: ZONES.ist,
   callDefaultZone: ZONES.eastern, // the zone the call-logs API logs call times in
   emailZone: ZONES.pacific, // Apollo's date filter (Pacific time, with daylight saving)
-} as const;
-
-export type Settings = { -readonly [K in keyof typeof SETTING_DEFAULTS]: (typeof SETTING_DEFAULTS)[K] extends number ? number : string };
+  // A call on a line that is not on the sheet goes to the agent's Representative when that is clear (see rules/assignments.ts).
+  // The prototype does this and its numbers depend on it; the written spec says such calls are Unassigned. Admin choice.
+  agentFallback: true,
+  // Lines that must stay Unassigned even when the rule above is on: Dave's (346) 423-3909 and (682) 356-3013.
+  agentFallbackExcludedLines: ["3464233909", "6823563013"],
+};
 
 export async function loadSettings(): Promise<Settings> {
   const rows = await db.setting.findMany();

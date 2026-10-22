@@ -36,6 +36,7 @@ model Client {
   sortOrder  Int              @default(0) @map("sort_order")
   emailRules ApolloClientRule[]
   emails     Email[]
+  assignments LineAssignment[]
 
   @@map("clients")
 }
@@ -45,6 +46,7 @@ model Representative {
   name     String  @unique
   internal Boolean @default(false) // Kutlerri's own caller: never shown in the dashboards
   agents   Agent[]
+  assignments LineAssignment[]
 
   @@map("representatives")
 }
@@ -95,6 +97,49 @@ model Setting {
   @@map("settings")
 }
 
+// ───────────────────────── who dialed for whom ─────────────────────────
+
+// One uploaded file (or import) of the phone-number sheet. Kept so it can be rolled back.
+model AssignmentUpload {
+  id           Int       @id @default(autoincrement())
+  source       String // upload | reference-import | override
+  fileName     String?   @map("file_name")
+  fileHash     String?   @map("file_hash")
+  uploadedBy   String?   @map("uploaded_by")
+  uploadedAt   DateTime  @default(now()) @map("uploaded_at")
+  status       String    @default("committed") // committed | rolled_back
+  rolledBackAt DateTime? @map("rolled_back_at")
+  rolledBackBy String?   @map("rolled_back_by")
+  summary      Json?
+  assignments  LineAssignment[]
+
+  @@map("assignment_uploads")
+}
+
+// "This phone line belonged to this Representative and client from this date to that date."
+// Weekly rows cover Monday to Sunday, monthly rows a whole month, daily rows one day.
+// Several rows can cover the same date; the most specific (shortest) period wins.
+model LineAssignment {
+  id                   Int              @id @default(autoincrement())
+  phoneNo10            String           @map("phone_no10")
+  representativeId     Int              @map("representative_id")
+  representative       Representative   @relation(fields: [representativeId], references: [id])
+  clientId             Int              @map("client_id")
+  client               Client           @relation(fields: [clientId], references: [id])
+  validFrom            DateTime         @map("valid_from") @db.Date
+  validTo              DateTime?        @map("valid_to") @db.Date // empty = open-ended
+  granularity          String // daily | weekly | monthly | custom | override
+  priority             Int              @default(1) // 1 = from an uploaded sheet, 0 = a standing fallback (override)
+  uploadId             Int              @map("upload_id")
+  upload               AssignmentUpload @relation(fields: [uploadId], references: [id])
+  supersededByUploadId Int?             @map("superseded_by_upload_id") // a later upload replaced this period
+  note                 String?
+
+  @@index([phoneNo10, validFrom])
+  @@index([uploadId])
+  @@map("line_assignments")
+}
+
 // ───────────────────────── ingested data ─────────────────────────
 
 // JustCall calls, from the call-logs API (/v1/calls)
@@ -120,6 +165,7 @@ model Call {
   ingestedAt       DateTime @default(now()) @map("ingested_at")
   updatedAt        DateTime @default(now()) @map("updated_at")
   raw              Json
+  attribution      CallAttribution?
 
   @@index([shiftDate])
   @@index([occurredAt])
@@ -196,4 +242,51 @@ model JobLock {
   lockedBy String   @map("locked_by")
 
   @@map("job_locks")
+}
+
+// Which Representative and client each call belongs to. Always recomputable from calls + assignments.
+model CallAttribution {
+  callId           String   @id @map("call_id")
+  call             Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  status           String // CLIENT | INTERNAL | UNASSIGNED | CONFLICT
+  clientId         Int?     @map("client_id")
+  representativeId Int?     @map("representative_id")
+  assignmentId     Int?     @map("assignment_id")
+  reason           String // sheet | fallback | shared-line-by-agent | no-assignment | ambiguous
+  computedAt       DateTime @default(now()) @map("computed_at")
+
+  @@index([status])
+  @@index([clientId, representativeId])
+  @@map("call_attribution")
+}
+
+// Daily counts for calls that belong to a client (the three dashboards read from here, not from raw calls).
+model DailyRollup {
+  id               Int      @id @default(autoincrement())
+  shiftDate        DateTime @map("shift_date") @db.Date
+  clientId         Int      @map("client_id")
+  representativeId Int      @map("representative_id")
+  agentId          Int?     @map("agent_id")
+  lineNo10         String?  @map("line_no10")
+  calls            Int
+  meaningful       Int // a connect longer than 90 seconds
+  mqlOver90        Int      @map("mql_over_90")
+  dMql             Int      @map("d_mql")
+  dInterested      Int      @map("d_interested")
+  dCallback        Int      @map("d_callback")
+  dNotInterested   Int      @map("d_not_interested")
+  dWrongNumber     Int      @map("d_wrong_number")
+  dMqlFu           Int      @map("d_mql_fu")
+  dDnc             Int      @map("d_dnc")
+  dNoAnswer        Int      @map("d_no_answer")
+  dBadNumber       Int      @map("d_bad_number")
+  dVoicemail       Int      @map("d_voicemail")
+  dMeeting         Int      @map("d_meeting")
+  dBlank           Int      @map("d_blank") // no disposition (counted as No Answer by the dashboards)
+  dOther           Int      @map("d_other") // a disposition text we do not recognise
+
+  @@index([shiftDate])
+  @@index([clientId, shiftDate])
+  @@index([representativeId, shiftDate])
+  @@map("daily_rollups")
 }

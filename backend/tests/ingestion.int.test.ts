@@ -71,7 +71,7 @@ afterAll(async () => {
 beforeEach(async () => {
   if (!HAS_DB) return;
   // a clean slate every time, so one test's edits to rules or agents can never leak into the next
-  await db.$executeRaw`TRUNCATE calls, emails, sync_runs, job_locks, agents, representatives, clients, apollo_client_map, call_timezone_rules, settings RESTART IDENTITY CASCADE`;
+  await db.$executeRaw`TRUNCATE calls, emails, sync_runs, job_locks, agents, representatives, clients, apollo_client_map, call_timezone_rules, settings, assignment_uploads, daily_rollups RESTART IDENTITY CASCADE`;
   await ref.ensureReferenceData();
   Object.assign(fake, { calls: [], emails: [], requests: [], faulty: null, delayMs: 0 });
 });
@@ -182,6 +182,27 @@ describe.skipIf(!HAS_DB)("calls", () => {
     fake.requests.length = 0;
     await jobs.runJob("calls");
     expect(fake.requests[0].from).toBe("2026-10-07");
+  });
+
+  it("new calls are attributed and counted as soon as the job has read them", async () => {
+    const assignments = await import("../src/services/assignments.js");
+    const sheet = await import("../src/rules/assignmentSheet.js");
+    await assignments.commitAssignments(
+      sheet.parseAssignmentSheet([["Week", "Representative", "Client", "Phone number"], ["2026-10-05", "Phoebe", "HotChi", "(773) 398-6668"]], { anchor: "2026-10-22" }),
+      { uploadedBy: "test" },
+    );
+    fake.calls = [
+      callItem(1, { disposition_code: "Dispositions: MQL", duration: 120 }), // on Phoebe's listed line
+      callItem(2, { justcall_no: "18005550000" }), // a line the sheet does not list, dialed by Phoebe's agent: goes to her one client
+    ];
+    await jobs.runJob("calls", { from: "2026-10-09", to: "2026-10-09" });
+    const attribution = await db.callAttribution.findMany({ orderBy: { callId: "asc" } });
+    expect(attribution.map((a) => [a.callId, a.status, a.reason])).toEqual([["1", "CLIENT", "sheet"], ["2", "CLIENT", "agent-fallback"]]);
+    const rollup = await db.dailyRollup.findMany();
+    expect(rollup).toHaveLength(2); // two lines, so two rows
+    expect(rollup.reduce((n, r) => n + r.calls, 0)).toBe(2);
+    expect(rollup.reduce((n, r) => n + r.dMql, 0)).toBe(1);
+    expect(((await lastRun("calls")).details as any).attribution.attribution.scanned).toBeGreaterThanOrEqual(2);
   });
 
   it("the same job never runs twice at once", async () => {

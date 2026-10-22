@@ -4,15 +4,16 @@ import { config } from "../config.js";
 import { addDays, todayIn, ZONES } from "../rules/time.js";
 import { ingestCallsWindow, loadAgentIds, type WindowResult } from "./ingestCalls.js";
 import { ingestEmailsWindow } from "./ingestEmails.js";
+import { attributeAndRollup, rebuildRollups } from "./attribution.js";
 import { recomputeCallTimes, recomputeEmailClients } from "./recompute.js";
 import { loadEmailRules, loadTzRules } from "./referenceData.js";
 import { loadSettings } from "./settings.js";
 
-export const JOB_NAMES = ["calls", "emails", "recompute-call-times", "recompute-email-clients"] as const;
+export const JOB_NAMES = ["calls", "emails", "recompute-call-times", "recompute-email-clients", "attribute-calls", "rebuild-rollups"] as const;
 export type JobName = (typeof JOB_NAMES)[number];
 
 export type JobOptions = {
-  from?: string; // YYYY-MM-DD, the provider's dates
+  from?: string; // YYYY-MM-DD. The provider's dates for calls and emails; shift days for attribute-calls and rebuild-rollups
   to?: string;
   triggeredBy?: string;
 };
@@ -79,8 +80,11 @@ async function runCalls(runId: string, opts: JobOptions): Promise<Outcome> {
   // an explicit range, or "from a couple of days before the newest stored call" (everything since the start date if empty)
   const from = opts.from ?? (newest[0].d ? addDays(newest[0].d, -OVERLAP_DAYS) : settings.backfillStart);
   const to = opts.to ?? addDays(today, 1);
-  const o = await walkDays("calls", runId, from < settings.backfillStart ? settings.backfillStart : from, to, (day) => ingestCallsWindow(ctx, day, day));
+  const start = from < settings.backfillStart ? settings.backfillStart : from;
+  const o = await walkDays("calls", runId, start, to, (day) => ingestCallsWindow(ctx, day, day));
   o.kind = opts.from ? "range" : newest[0].d ? "incremental" : "backfill";
+  // a call's shift day is the day it was logged or the day before, so refresh one day either side
+  o.details.attribution = await attributeAndRollup(addDays(start, -1), addDays(to, 1));
   return o;
 }
 
@@ -97,7 +101,18 @@ async function runEmails(runId: string, opts: JobOptions): Promise<Outcome> {
 
 async function runRecomputeCalls(runId: string, opts: JobOptions): Promise<Outcome> {
   const r = await recomputeCallTimes(opts.from, opts.to, (done) => void db.syncRun.update({ where: { id: runId }, data: { fetched: done } }).catch(() => {}));
-  return { totals: { ...zero(), fetched: r.scanned, updated: r.changed }, warnings: [], details: r, from: opts.from, to: opts.to, kind: "range" };
+  const attribution = r.changed ? await attributeAndRollup(opts.from ? addDays(opts.from, -2) : undefined, opts.to ? addDays(opts.to, 2) : undefined) : null;
+  return { totals: { ...zero(), fetched: r.scanned, updated: r.changed }, warnings: [], details: { ...r, attribution }, from: opts.from, to: opts.to, kind: "range" };
+}
+
+async function runAttribute(runId: string, opts: JobOptions): Promise<Outcome> {
+  const r = await attributeAndRollup(opts.from, opts.to, (done) => void db.syncRun.update({ where: { id: runId }, data: { fetched: done } }).catch(() => {}));
+  return { totals: { ...zero(), fetched: r.attribution.scanned, updated: r.attribution.changed }, warnings: [], details: r, from: opts.from, to: opts.to, kind: "range" };
+}
+
+async function runRollups(opts: JobOptions): Promise<Outcome> {
+  const r = await rebuildRollups(opts.from, opts.to);
+  return { totals: { ...zero(), updated: r.rows }, warnings: [], details: r, from: opts.from, to: opts.to, kind: "range" };
 }
 
 async function runRecomputeEmails(): Promise<Outcome> {
@@ -122,6 +137,8 @@ export async function runJob(name: JobName, opts: JobOptions = {}): Promise<JobR
       name === "calls" ? await runCalls(run.id, opts)
       : name === "emails" ? await runEmails(run.id, opts)
       : name === "recompute-call-times" ? await runRecomputeCalls(run.id, opts)
+      : name === "attribute-calls" ? await runAttribute(run.id, opts)
+      : name === "rebuild-rollups" ? await runRollups(opts)
       : await runRecomputeEmails();
     const status = o.warnings.length ? "warning" : "ok";
     await db.syncRun.update({

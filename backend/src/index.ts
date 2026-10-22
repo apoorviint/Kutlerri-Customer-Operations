@@ -6,12 +6,15 @@ import { db } from "./db.js";
 import { authRouter } from "./routes/auth.js";
 import { statusRouter } from "./routes/status.js";
 import { jobsRouter } from "./routes/jobs.js";
+import { assignmentsRouter } from "./routes/assignments.js";
 import { ensureReferenceData } from "./services/referenceData.js";
 import { cleanUpAfterCrash, startScheduler } from "./services/jobs.js";
 
 const app = express();
 app.set("trust proxy", 1); // behind the frontend proxy / a load balancer
 app.disable("x-powered-by");
+// a pasted sheet can be large; every other endpoint takes small bodies only
+app.use("/api/admin/assignments", express.json({ limit: "10mb" }));
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 if (config.corsOrigin) app.use(cors({ origin: config.corsOrigin.split(","), credentials: true }));
@@ -22,6 +25,7 @@ const api = express.Router();
 api.use("/auth", authRouter);
 api.use("/status", statusRouter);
 api.use("/jobs", jobsRouter);
+api.use("/admin/assignments", assignmentsRouter);
 app.use("/api", api);
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));
