@@ -14,7 +14,7 @@ export class AssignmentValidationError extends Error {
 export type StoredAssignment = Assignment & { granularity: string; repName: string; clientName: string };
 
 const apostrophes = /[’‘`´]/g;
-const norm = (s: string) => s.replace(apostrophes, "'").trim().replace(/\s+/g, " ").toLowerCase();
+export const norm = (s: string) => s.replace(apostrophes, "'").trim().replace(/\s+/g, " ").toLowerCase();
 
 /** Every assignment currently in force: not replaced by a later upload, and its upload not rolled back. */
 export async function loadActiveAssignments(): Promise<StoredAssignment[]> {
@@ -37,9 +37,9 @@ export async function loadActiveAssignments(): Promise<StoredAssignment[]> {
 
 // ───────────── turning the names in a sheet into ids ─────────────
 
-type Lookups = { reps: Map<string, { id: number; name: string }>; clients: Map<string, { id: number; name: string }> };
+export type Lookups = { reps: Map<string, { id: number; name: string }>; clients: Map<string, { id: number; name: string }> };
 
-async function loadLookups(): Promise<Lookups> {
+export async function loadLookups(): Promise<Lookups> {
   const [reps, clients, agents] = await Promise.all([
     db.representative.findMany(), db.client.findMany(), db.agent.findMany({ where: { representativeId: { not: null } }, include: { representative: true } }),
   ]);

@@ -105,6 +105,7 @@ model AssignmentUpload {
   source       String // upload | reference-import | override
   fileName     String?   @map("file_name")
   fileHash     String?   @map("file_hash")
+  fileKey      String?   @map("file_key") // where the original file is kept (private storage)
   uploadedBy   String?   @map("uploaded_by")
   uploadedAt   DateTime  @default(now()) @map("uploaded_at")
   status       String    @default("committed") // committed | rolled_back
@@ -334,4 +335,84 @@ model PhoneMatch {
 
   @@id([clientId, phoneNo10])
   @@map("phone_matches")
+}
+
+// ───────────── admin console (Phase 4) ─────────────
+
+// Every upload and every setting change: who, what, when.
+model AuditLog {
+  id      Int      @id @default(autoincrement())
+  at      DateTime @default(now())
+  actor   String
+  action  String // e.g. "assignments.upload", "settings.update"
+  target  String?
+  details Json?
+
+  @@index([at])
+  @@map("audit_log")
+}
+
+// One uploaded prospect database file for one client.
+model ProspectBatch {
+  id             Int       @id @default(autoincrement())
+  clientId       Int       @map("client_id")
+  fileName       String    @map("file_name")
+  fileHash       String?   @map("file_hash")
+  fileKey        String?   @map("file_key") // where the original file is kept (private storage)
+  uploadedBy     String?   @map("uploaded_by")
+  uploadedAt     DateTime  @default(now()) @map("uploaded_at")
+  finishedAt     DateTime? @map("finished_at")
+  status         String    @default("processing") // processing | committed | failed | rolled_back
+  replace        Boolean   @default(false)
+  supersededById Int?      @map("superseded_by_id") // set when a later "replace" upload took this client's place
+  rowsRead       Int       @default(0) @map("rows_read")
+  phonesIndexed  Int       @default(0) @map("phones_indexed")
+  newlyMatched   Int       @default(0) @map("newly_matched")
+  progress       Json? // { sheet, rows } while running
+  sheets         Json? // per sheet: name, rows, detected columns
+  error          String?
+
+  @@index([clientId])
+  @@map("prospect_batches")
+}
+
+// One row per (person, phone number) read from a database. The match table is built from these.
+model ProspectPhone {
+  id        BigInt  @id @default(autoincrement())
+  batchId   Int     @map("batch_id")
+  clientId  Int     @map("client_id")
+  phoneNo10 String  @map("phone_no10")
+  name      String?
+  title     String?
+  company   String?
+
+  @@index([clientId, phoneNo10])
+  @@index([batchId])
+  @@map("prospect_phones")
+}
+
+model BillingUpload {
+  id           Int       @id @default(autoincrement())
+  fileName     String?   @map("file_name")
+  fileHash     String?   @map("file_hash")
+  fileKey      String?   @map("file_key")
+  uploadedBy   String?   @map("uploaded_by")
+  uploadedAt   DateTime  @default(now()) @map("uploaded_at")
+  status       String    @default("committed") // committed | rolled_back
+  rolledBackAt DateTime? @map("rolled_back_at")
+  rolledBackBy String?   @map("rolled_back_by")
+  summary      Json?
+
+  @@map("billing_uploads")
+}
+
+// What an order looked like before an upload touched it (null = the upload created it), so an upload can be rolled back.
+model BillingChange {
+  id        Int     @id @default(autoincrement())
+  uploadId  Int     @map("upload_id")
+  invoiceNo String  @map("invoice_no")
+  before    Json?
+
+  @@index([uploadId])
+  @@map("billing_changes")
 }

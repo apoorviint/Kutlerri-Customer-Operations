@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db.js";
 import { requireAdmin, requireAdminOrCron } from "../auth.js";
+import { audit } from "../services/audit.js";
 import { JOB_NAMES, runJob, type JobName } from "../services/jobs.js";
 
 export const jobsRouter = Router();
@@ -25,6 +26,7 @@ jobsRouter.post("/:name/run", requireAdminOrCron, async (req, res) => {
   if (!q.success) return void res.status(400).json({ error: q.error.issues[0]?.message ?? "Invalid query" });
 
   const opts = { from: q.data.from, to: q.data.to, triggeredBy: req.session ? `admin:${req.session.email}` : "scheduler" };
+  if (req.session) await audit(req.session.email, "job.run", name, { from: q.data.from ?? null, to: q.data.to ?? null });
   const work = runJob(name, opts);
   if (q.data.wait === "1") {
     const r = await work;

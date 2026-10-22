@@ -184,6 +184,10 @@ export async function runJob(name: JobName, opts: JobOptions = {}): Promise<JobR
 /** Marks runs left "running" by a crashed process as failed, and frees their locks. Called once at start-up. */
 export async function cleanUpAfterCrash() {
   await db.syncRun.updateMany({ where: { status: "running" }, data: { status: "failed", finishedAt: new Date(), error: "Interrupted (the service stopped while this was running)" } });
+  // a "replace" upload that stopped half way must give the earlier databases back
+  const stuck = (await db.prospectBatch.findMany({ where: { status: "processing" }, select: { id: true } })).map((b) => b.id);
+  if (stuck.length) await db.prospectBatch.updateMany({ where: { supersededById: { in: stuck } }, data: { supersededById: null } });
+  await db.prospectBatch.updateMany({ where: { status: "processing" }, data: { status: "failed", finishedAt: new Date(), error: "Interrupted (the service stopped while this was being read). Upload the file again." } });
   await db.jobLock.deleteMany({});
 }
 

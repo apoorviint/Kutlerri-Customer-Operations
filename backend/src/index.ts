@@ -7,9 +7,12 @@ import { authRouter } from "./routes/auth.js";
 import { statusRouter } from "./routes/status.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { assignmentsRouter } from "./routes/assignments.js";
+import { adminRouter } from "./routes/admin.js";
+import { uploadsRouter } from "./routes/uploads.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { ensureReferenceData } from "./services/referenceData.js";
 import { cleanUpAfterCrash, startScheduler } from "./services/jobs.js";
+import { sweepStaged } from "./services/storage.js";
 
 const app = express();
 app.set("trust proxy", 1); // behind the frontend proxy / a load balancer
@@ -27,6 +30,8 @@ api.use("/auth", authRouter);
 api.use("/status", statusRouter);
 api.use("/jobs", jobsRouter);
 api.use("/admin/assignments", assignmentsRouter);
+api.use("/admin/files", uploadsRouter);
+api.use("/admin", adminRouter);
 api.use(dashboardRouter); // the dashboards' data; mounted last because it asks for a signed-in user on everything that reaches it
 app.use("/api", api);
 
@@ -39,6 +44,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 async function main() {
   await ensureReferenceData();
   await cleanUpAfterCrash();
+  void sweepStaged();
   const server = app.listen(config.port, () => console.log(`Backend listening on :${config.port}`));
   const stopScheduler = startScheduler();
   for (const sig of ["SIGINT", "SIGTERM"] as const) {

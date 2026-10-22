@@ -5,6 +5,7 @@ import { requireAdmin } from "../auth.js";
 import { parseAssignmentSheet } from "../rules/assignmentSheet.js";
 import { todayIn } from "../rules/time.js";
 import { AssignmentValidationError, commitAssignments, fileHash, previewAssignments, rollbackUpload } from "../services/assignments.js";
+import { audit } from "../services/audit.js";
 import { runJob } from "../services/jobs.js";
 import { loadSettings } from "../services/settings.js";
 
@@ -63,6 +64,7 @@ assignmentsRouter.post("/uploads/:id/rollback", async (req, res) => {
   if (!Number.isInteger(id)) return void res.status(400).json({ error: "Invalid id" });
   try {
     const { range } = await rollbackUpload(id, req.session!.email);
+    await audit(req.session!.email, "assignments.rollback", `upload #${id}`, { range });
     if (range) void runJob("attribute-calls", { from: range.from, to: range.to ?? undefined, triggeredBy: `rollback:${req.session!.email}` });
     res.json({ rolledBack: true, recalculating: range });
   } catch (e) {
