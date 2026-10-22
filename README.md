@@ -7,7 +7,14 @@ Two separate apps that talk over HTTP:
 | `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, serves every number the dashboards show |
 | `frontend/` | Next.js 15, React | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
 
-**Status: Phase 4 of 5** (the admin console). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+**Status: Phase 5 of 5** (sign-in, roles, hardening, deploy). Deploying: [docs/DEPLOY.md](docs/DEPLOY.md). When something looks wrong: [docs/RUNBOOK.md](docs/RUNBOOK.md). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+
+## What Phase 5 adds
+- **Google sign-in restricted to the company domain** (OpenID Connect with PKCE; the account's domain and the email's domain must both match, and the email must be verified). New people arrive as **viewers**; `ADMIN_EMAILS` and **Admin console → People** make administrators, pre-register people and switch access off (takes effect within 30 seconds; you cannot remove your own access or the last administrator). The email/password form stays for development and turns itself off in production once Google is configured.
+- **Hardening:** protective headers on the API and the website, request limits (900 a minute per address, 120 upload requests an hour), uploaded files checked by their contents (an .xlsx must really be a workbook), JSON request logs with an id, no caching of private data, and a cookie for an unknown user is refused in production.
+- **Health checks** for monitoring: `/health`, `/health/ready` (database), `/health/feeds` (503 when the calls feed is stale or failed).
+- **CI** (`.github/workflows/ci.yml`): type-check, tests (with a Postgres) and builds. **Dockerfiles** for both apps. `.env.example` files for both.
+- **Docs:** [DEPLOY.md](docs/DEPLOY.md) (Google setup, Cloud Run, Cloud Scheduler, monitoring, go-live checklist) and [RUNBOOK.md](docs/RUNBOOK.md).
 
 ## What Phase 4 adds
 An **Admin console** (`/admin`, administrators only; the dashboard header shows a link for admins) with:
@@ -82,4 +89,4 @@ TEST_DATABASE_URL="postgresql://…/customer_ops_test" npm test   # plus the ing
 
 ## Deploy
 - **Backend:** `backend/Dockerfile` (Cloud Run). It runs `prisma migrate deploy` on start.
-- **Frontend:** a Next.js host such as Vercel, with `BACKEND_URL` set to the backend's public URL.
+- **Frontend:** `frontend/Dockerfile` (Cloud Run) or a Next.js host such as Vercel, with `BACKEND_URL` pointing at the backend. Vercel caps upload size at about 4.5 MB; see docs/DEPLOY.md.

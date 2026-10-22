@@ -16,6 +16,8 @@ import { runJob } from "../services/jobs.js";
 import { processBatch, rollbackBatch, startBatch } from "../services/prospects.js";
 import { loadSettings } from "../services/settings.js";
 import { keep, newStagedId, stagedPath, stagingDir } from "../services/storage.js";
+import { looksLike } from "../security.js";
+import { open as openFile } from "node:fs/promises";
 
 /**
  * File uploads for the admin console. Two steps for the sheets (assignments, billing): upload the file to get a preview,
@@ -39,8 +41,22 @@ const receive = (req: Request, res: Response) =>
     upload.single("file")(req, res, (err) => {
       if (err) { res.status(400).json({ error: err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE" ? `The file is larger than ${MAX_MB} MB.` : "The upload could not be read." }); return resolve(null); }
       if (!req.file) { res.status(400).json({ error: "Choose a file to upload (field name: file)." }); return resolve(null); }
-      try { fileKind(req.file.originalname); } catch (e) { void rm(req.file.path, { force: true }); res.status(400).json({ error: (e as Error).message }); return resolve(null); }
-      resolve(req.file);
+      const file = req.file;
+      void (async () => {
+        try {
+          const kind = fileKind(file.originalname);
+          const fh = await openFile(file.path, "r");
+          const head = Buffer.alloc(8192);
+          const { bytesRead } = await fh.read(head, 0, 8192, 0);
+          await fh.close();
+          if (!looksLike(kind, head.subarray(0, bytesRead))) throw new Error(`This file is not really a ${kind === "xlsx" ? ".xlsx workbook" : "text .csv file"}. Check that it was saved in that format.`);
+          resolve(file);
+        } catch (e) {
+          await rm(file.path, { force: true });
+          res.status(400).json({ error: (e as Error).message });
+          resolve(null);
+        }
+      })();
     }),
   );
 

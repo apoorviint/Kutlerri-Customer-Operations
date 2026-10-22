@@ -15,9 +15,11 @@ enum Role {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String   @map("password_hash")
+  passwordHash String?  @map("password_hash") // empty for people who sign in with Google
   role         Role     @default(VIEWER)
+  active       Boolean  @default(true) // an inactive user cannot sign in and is signed out within a minute
   createdAt    DateTime @default(now()) @map("created_at")
+  lastLoginAt  DateTime? @map("last_login_at")
 
   @@map("users")
 }

@@ -149,3 +149,19 @@ test("the admin console works on a phone-sized screen without sideways scrolling
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+test("people: the list shows who can sign in, and you cannot change your own access", async ({ page }) => {
+  await openAdmin(page, "People");
+  await expect(page.getByRole("cell", { name: /admin@example.com \(you\)/ })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "viewer@example.com" })).toBeVisible();
+  await expect(page.getByLabel("Role for admin@example.com")).toBeDisabled();
+  await expect(page.getByLabel("Role for viewer@example.com")).toBeEnabled();
+});
+
+test("the sign-in page offers the form here (Google appears once it is configured)", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Sign in with Google/ })).toHaveCount(0);
+  await page.goto("/login?error=Only%20%40example.com%20accounts%20can%20sign%20in.");
+  await expect(page.locator("p.problem")).toContainText("accounts can sign in");
+});

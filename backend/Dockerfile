@@ -6,7 +6,9 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 ENV NODE_ENV=production
-# `data/` is part of the image, so every upload (a commit to the repo) ships with the next build.
+# Uploaded files go to UPLOAD_DIR (mount a bucket or disk there); nothing from the repo's data/ folder is used at run time.
+ENV UPLOAD_DIR=/data/uploads
 EXPOSE 8080
 ENV PORT=8080
+# Needs about 1 GB of memory while a large prospect database is being read.
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

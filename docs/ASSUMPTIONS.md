@@ -134,6 +134,13 @@ With the rule on, every one of the prototype's 49,971 client calls is in the dat
 - **Settings an admin can change:** start date, agent-fallback rule and its excluded lines, schedules and break thresholds, which prospect fields show per client. Changing the fallback re-attributes calls. Zones and the shift start are not editable from the screen.
 - **Agent "Baishnavi Sahoo"** is still not mapped to a Representative; the data-quality panel and the Mappings tab show it until you tell me who it is.
 
+## Phase 5: sign-in, roles, hardening, deploy
+- **Google sign-in** needs an OAuth client in your Google Workspace (steps in docs/DEPLOY.md); it cannot be tried until you create one. The parts that do not need Google (who is let in, state/nonce/PKCE, roles, switching people off) are tested; the live round trip with Google is not, and should be checked once after deploy.
+- **Roles:** viewer (dashboards) and admin (console). New Google users are viewers; `ADMIN_EMAILS` and the People tab make admins. Access changes apply within 30 seconds.
+- **Limits are per instance** (in memory), so the deploy guide runs one backend instance.
+- **Not done / your accounts needed:** the actual deploy (Cloud Run, Scheduler, Google OAuth client, database, bucket) needs your cloud accounts; everything is prepared (Dockerfiles, CI, env examples, commands, runbook, checklist). Docker images were not built here.
+- **Vercel** caps request bodies at about 4.5 MB, which blocks big uploads; the guide recommends Cloud Run for the website too.
+
 ## Small choices
 - Quick periods ("Last week", "This month", …) count from today's date in IST. The range starts on everything there is data for, as in the prototype.
 - Names read "Sales Representative" in the two table titles, as in your prompt, and "Representative" everywhere else.

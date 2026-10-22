@@ -13,19 +13,27 @@ import { dashboardRouter } from "./routes/dashboard.js";
 import { ensureReferenceData } from "./services/referenceData.js";
 import { cleanUpAfterCrash, startScheduler } from "./services/jobs.js";
 import { sweepStaged } from "./services/storage.js";
+import { rateLimit, requestLog, securityHeaders } from "./security.js";
+import { healthRouter } from "./routes/health.js";
 
 const app = express();
 app.set("trust proxy", 1); // behind the frontend proxy / a load balancer
 app.disable("x-powered-by");
+app.use(securityHeaders);
+app.use(requestLog);
 // a pasted sheet can be large; every other endpoint takes small bodies only
 app.use("/api/admin/assignments", express.json({ limit: "10mb" }));
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 if (config.corsOrigin) app.use(cors({ origin: config.corsOrigin.split(","), credentials: true }));
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.use("/health", healthRouter); // no data, no sign-in: for load balancers and uptime checks
 
 const api = express.Router();
+// generous for people (a dashboard makes a dozen calls per screen), tight for the scheduler-free paths
+api.use(rateLimit(900, 60_000, (req) => !!config.cronSecret && req.headers.authorization === `Bearer ${config.cronSecret}`));
+const uploadLimit = rateLimit(120, 60 * 60_000); // only uploads and confirmations count (a check and a save are two), not the progress polling
+api.use("/admin/files", (req, res, next) => (req.method === "POST" ? uploadLimit(req, res, next) : next()));
 api.use("/auth", authRouter);
 api.use("/status", statusRouter);
 api.use("/jobs", jobsRouter);

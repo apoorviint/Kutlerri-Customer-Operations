@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db.js";
-import { requireAdmin } from "../auth.js";
+import { forgetUsers, requireAdmin } from "../auth.js";
+import { config } from "../config.js";
 import { agentKey, last10 } from "../rules/calls.js";
 import { toUtc } from "../rules/time.js";
 import { audit } from "../services/audit.js";
@@ -215,4 +216,37 @@ adminRouter.put("/settings", async (req, res) => {
   // these decide who calls belong to, so recalculate
   if (changed.includes("agentFallback") || changed.includes("agentFallbackExcludedLines")) void runJob("attribute-calls", { triggeredBy: `settings:${who(req)}` });
   res.json({ changed, settings: await loadSettings() });
+});
+
+// ───────────── users ─────────────
+
+adminRouter.get("/users", async (_req, res) => {
+  const users = await db.user.findMany({ orderBy: { email: "asc" }, select: { id: true, email: true, role: true, active: true, createdAt: true, lastLoginAt: true, passwordHash: true } });
+  res.json(users.map(({ passwordHash, ...u }) => ({ ...u, hasPassword: !!passwordHash })));
+});
+
+/** Pre-register someone (they sign in with Google, on the company domain, and arrive with this role). */
+adminRouter.post("/users", async (req, res) => {
+  const p = z.object({ email: z.string().email(), role: z.enum(["ADMIN", "VIEWER"]) }).safeParse(req.body);
+  if (!p.success) return bad(res, "Send { email, role: ADMIN | VIEWER }.");
+  const email = p.data.email.trim().toLowerCase();
+  if (config.allowedDomain && !email.endsWith(`@${config.allowedDomain}`)) return bad(res, `Only @${config.allowedDomain} addresses can sign in.`);
+  if (await db.user.findUnique({ where: { email } })) return bad(res, "That person already has an account.");
+  const u = await db.user.create({ data: { email, role: p.data.role } });
+  await audit(who(req), "user.created", email, { role: p.data.role, via: "admin" });
+  res.status(201).json({ id: u.id });
+});
+
+/** Change someone's role or switch their access off. You cannot lock yourself out, and the last active admin stays. */
+adminRouter.put("/users/:id", async (req, res) => {
+  const p = z.object({ role: z.enum(["ADMIN", "VIEWER"]).optional(), active: z.boolean().optional() }).safeParse(req.body);
+  const user = await db.user.findUnique({ where: { id: String(req.params.id) } });
+  if (!p.success || !user) return void res.status(p.success ? 404 : 400).json({ error: p.success ? "No such user" : "Send { role } and/or { active }." });
+  if (user.id === req.session!.userId && (p.data.active === false || (p.data.role && p.data.role !== "ADMIN"))) return bad(res, "You cannot remove your own admin access.");
+  const losesAdmin = user.role === "ADMIN" && user.active && (p.data.active === false || p.data.role === "VIEWER");
+  if (losesAdmin && (await db.user.count({ where: { role: "ADMIN", active: true } })) <= 1) return bad(res, "There must be at least one active administrator.");
+  await db.user.update({ where: { id: user.id }, data: { role: p.data.role, active: p.data.active } });
+  forgetUsers();
+  await audit(who(req), "user.update", user.email, { from: { role: user.role, active: user.active }, to: p.data });
+  res.json({ ok: true });
 });
