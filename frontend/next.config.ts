@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const backend = (process.env.BACKEND_URL || "http://localhost:4000").replace(/\/+$/, "");
+const backend = (process.env.BACKEND_URL || "http://localhost:8080").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   output: "standalone", // a small self-contained server for the Docker image

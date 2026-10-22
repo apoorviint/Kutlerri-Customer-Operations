@@ -311,3 +311,5 @@ th.sub{font-weight:600;color:var(--muted)}
 @media (max-width:760px){.top{padding-inline:16px}.wrap{padding-inline:16px}.adm-tabs button{flex:1 1 45%}}
 .login a.go{display:block;text-align:center;text-decoration:none}
 .login .or{margin:0;text-align:center;color:var(--muted);font-size:12px}
+.clientpick{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.clientpick input{min-width:220px}
