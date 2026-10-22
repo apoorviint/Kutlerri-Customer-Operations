@@ -291,3 +291,48 @@ model DailyRollup {
   @@index([representativeId, shiftDate])
   @@map("daily_rollups")
 }
+
+// ───────────────────────── revenue and prospect matching ─────────────────────────
+
+// One order from the billing sheet. Revenue is the invoice Total, counted by order date.
+// (Phase 4 adds the upload; until then the reference import fills this.)
+model BillingOrder {
+  id               Int            @id @default(autoincrement())
+  invoiceNo        String         @unique @map("invoice_no")
+  clientId         Int            @map("client_id")
+  representativeId Int            @map("representative_id")
+  createdDate      DateTime?      @map("created_date") @db.Date
+  orderDate        DateTime       @map("order_date") @db.Date
+  account          String?
+  subtotal         Decimal?       @db.Decimal(12, 2)
+  tax              Decimal?       @db.Decimal(12, 2)
+  tip              Decimal?       @db.Decimal(12, 2)
+  fee              Decimal?       @db.Decimal(12, 2)
+  discount         Decimal?       @db.Decimal(12, 2)
+  total            Decimal        @db.Decimal(12, 2)
+  uploadId         Int?           @map("upload_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  @@index([orderDate])
+  @@index([clientId, orderDate])
+  @@index([representativeId, orderDate])
+  @@map("billing_orders")
+}
+
+// Who a prospect's phone number belongs to, within one client's databases:
+// one person, or several people sharing the number. No row means "not in your databases".
+// (Phase 4 builds this from the uploaded databases; until then the reference import fills it.)
+model PhoneMatch {
+  clientId   Int      @map("client_id")
+  phoneNo10  String   @map("phone_no10")
+  kind       String // 'one' | 'multiple'
+  name       String?
+  company    String?
+  title      String?
+  candidates String? // for 'multiple': "Name (Title), Name (Title), +N more"
+  source     String   @default("reference-import")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  @@id([clientId, phoneNo10])
+  @@map("phone_matches")
+}

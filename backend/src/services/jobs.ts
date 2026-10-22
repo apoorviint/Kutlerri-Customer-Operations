@@ -8,6 +8,7 @@ import { attributeAndRollup, rebuildRollups } from "./attribution.js";
 import { recomputeCallTimes, recomputeEmailClients } from "./recompute.js";
 import { loadEmailRules, loadTzRules } from "./referenceData.js";
 import { loadSettings } from "./settings.js";
+import { clearCache } from "./cache.js";
 
 export const JOB_NAMES = ["calls", "emails", "recompute-call-times", "recompute-email-clients", "attribute-calls", "rebuild-rollups"] as const;
 export type JobName = (typeof JOB_NAMES)[number];
@@ -160,6 +161,7 @@ export async function runJob(name: JobName, opts: JobOptions = {}): Promise<JobR
     await db.syncRun.update({ where: { id: run.id }, data: { status: "failed", finishedAt: new Date(), error: error.slice(0, 2000) } });
     return { started: true, runId: run.id, status: "failed", reason: error };
   } finally {
+    clearCache(); // whatever the run changed, the dashboards must not show an older answer
     await releaseLock(name);
   }
 }

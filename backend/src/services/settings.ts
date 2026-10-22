@@ -1,5 +1,6 @@
 import { db } from "../db.js";
 import { SHIFT_START_HOUR, ZONES } from "../rules/time.js";
+import { DEFAULT_TIMING, type TimingSettings } from "../rules/timing.js";
 
 export type Settings = {
   backfillStart: string;
@@ -10,6 +11,8 @@ export type Settings = {
   agentFallback: boolean;
   agentFallbackExcludedLines: string[];
   outboundOnly: boolean;
+  timing: TimingSettings;
+  prospectShow: Record<string, string[]>;
 };
 
 /** Settings an admin can change later. Missing ones fall back to these defaults. */
@@ -28,6 +31,10 @@ export const SETTING_DEFAULTS: Settings = {
   // Only calls made from our side count. A call the source says is inbound is kept out of the dashboards;
   // a call whose direction is not given (all of them, until the call-logs API sends it) is treated as outbound.
   outboundOnly: true,
+  // Call timing and breaks: schedules as logged (Rasa starts 6:30 PM, break 9:30 to 10:30 PM; everyone else 7:30 PM, 10:30 to 11:30 PM)
+  timing: DEFAULT_TIMING,
+  // What to show for a prospect in a recording row, per client (a phone number is added where listed). Name, title and company are always shown.
+  prospectShow: { "Eight Turn Crepe": ["name", "phone"] },
 };
 
 export async function loadSettings(): Promise<Settings> {

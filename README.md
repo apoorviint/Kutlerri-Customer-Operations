@@ -4,10 +4,15 @@ Two separate apps that talk over HTTP:
 
 | | Stack | Role |
 |---|---|---|
-| `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, will serve the dashboards |
-| `frontend/` | Next.js 15, React, Tailwind | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
+| `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, serves every number the dashboards show |
+| `frontend/` | Next.js 15, React | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
 
-**Status: Phase 2 of 5** (ingestion, then who dialed for whom, attribution and daily counts). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+**Status: Phase 3 of 5** (the three dashboards). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+
+## What Phase 3 adds
+- **Overview** (opens first), **Representative View** and **Client View**, in the prototype's purple look (light and dark): date range and quick periods, KPI cards with the change against the days before, expandable and sortable calls tables, weekly revenue with hover lists, call timing and breaks (daily and weekly), Representative and client profiles with call recordings (prospect lines, search, filters) and a client's emails.
+- Backend endpoints for all of it (`/api/overview`, `/reps/table`, `/clients/table`, `/reps/:id/profile`, `/clients/:id/profile`, `…/recordings`, `/clients/:id/emails`, `/emails/:id`, `/revenue/weekly`, `/timing/*`), cached per question and cleared when data changes.
+- `npm run e2e` in `frontend/` drives the real dashboard in Chrome (needs both apps running with data).
 
 ## What Phase 2 adds
 - The **who-dialed-for-whom sheet** is stored as dated rows (weekly, monthly or **daily**; the most specific period wins), with a **preview**, **rollback**, and a no-op when the same sheet is uploaded twice. Endpoints: `POST /api/admin/assignments/preview`, `POST …/commit`, `GET …/uploads`, `POST …/uploads/:id/rollback`. The sheet is sent as rows of cells; the file reader and upload screen come with the admin console in Phase 4.
@@ -19,7 +24,7 @@ Two separate apps that talk over HTTP:
 - Stores calls with their provider time, the UTC instant, the **IST shift day** (5 PM to 5 PM IST), the agent and a mapped disposition.
 - Stores emails with the **client (by sender domain)** and Apollo's **Pacific date**.
 - Running a job again never duplicates or rewrites anything; changed rows are updated in place.
-- `GET /api/status` and a small "Data status" page show what is stored, when it last synced, and what needs attention.
+- `GET /api/status` shows what is stored, when it last synced, and what needs attention (it moves into the admin data-quality panel in Phase 4).
 
 ## Run locally
 ```

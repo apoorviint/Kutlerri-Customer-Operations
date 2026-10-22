@@ -94,3 +94,37 @@ With the rule on, every one of the prototype's 49,971 client calls is in the dat
 - **Andrew's two numbers swap clients** between the weeks of Sep 21 and Sep 28 (…2756 and …9521). Imported as written; reported when the sheet is previewed.
 - **One shared line:** …0261 in the week of Sep 7 is listed for Dave and Hiya (both Rasa); calls follow the agent.
 - **Calls after the sheet ends** (from Oct 12) have no client until the next sheet is uploaded. The status page says how many and on which lines.
+
+---
+
+# Phase 3: the three dashboards
+
+## What was built
+- **Backend (all behind sign-in, every number worked out on the server):** `/api/meta`, `/overview`, `/reps/table`, `/clients/table`, `/reps/:id/profile`, `/clients/:id/profile`, `/reps/:id/recordings`, `/clients/:id/recordings`, `/clients/:id/emails`, `/emails/:id`, `/revenue/weekly?by=rep|client`, `/timing/days`, `/timing/day`, `/timing/week`. Answers are cached per request (range and filters) for up to a minute and are thrown away whenever a sync, upload or rollback changes the data.
+- **Frontend:** the prototype's purple look in light and dark (it follows the device setting); the header with the date range and quick periods; the three tabs with the **Overview opening first**; the expandable, sortable calls tables with Answered / Not answered breakdowns; weekly revenue with the hover lists; call timing (daily and weekly timelines plus the comparison table); the Representative and client profiles (chips, tiles, recordings, emails); empty, loading and error states; a phone layout with no sideways scrolling. Times are shown in **IST**; email times in **Pacific** ("PT").
+- **Nothing before 17 Aug is ever shown.** A range that starts earlier is cut at that date; a range wholly before it is empty.
+
+## Acceptance (shift days 17 Aug to 9 Oct, with the decisions already taken)
+| Check | Prompt | Here |
+|---|---|---|
+| Revenue / orders / weekly run rate | $2,840.86 / 8 / $568.17 | **$2,840.86 / 8 / $568.17 (exact)** |
+| All 10 orders (through 31 Oct) | $5,256.75, run rate $750.96 | **$5,256.75, $750.96 (exact)** |
+| Active clients | 6 of 6 | **6 of 6** |
+| Rasa emails: sent / opened / replied / bounced / unsubscribed | 519 / 68 / 3 / 7 / 3 (prototype) | **519 / 68 / 3 / 7 / 3 (exact)** |
+| Sep 10 shift, calls the workbook also has | 274 | **274 (exact)** |
+| Breaks on Fri 9 Oct | David 1h 45m, Nia 1h 34m, Akil 1h 27m, Hiya 1h 43m, Steven 3h 29m, Rohit none | **Nia, Akil, Hiya, Steven and Rohit exact**; David 1h 26m (see below) |
+| Call numbers | see Phase 2 | as Phase 2: lower by the calls left out on purpose, higher by the probable inbound calls |
+
+- **Why David (and Robin and Kevin) differ.** Each has a single **0-second call that the prototype's workbook does not have**, inside the break (David 9:49 PM, Robin 10:32 PM, Kevin 10:49 PM), which splits the break. These are the probable inbound calls described in Phase 2. The break detection itself is exact. They will disappear once the API sends a call direction.
+- **Emails:** the call-logs API only has Rasa's emails, so the other five clients show no emails and the Overview says "Email data is available for 1 of 6 clients so far". The prototype's 7,469 emails across six clients cannot be reproduced from this API. **Email text and replies are not in the API either**: the viewer says so instead of showing nothing. When they arrive, the text is cleaned on the server and shown in a sandboxed frame; a reply shows only when Apollo marks the email as replied.
+
+## Data that is not final yet (comes from the reference file until the Phase 4 uploads exist)
+- **Billing:** the 10 orders in the prototype. The billing upload comes in Phase 4. Orders are counted by order date; the "Total does not equal subtotal + tax + tip + fee - discount" flag needs the extra columns, which the reference does not have.
+- **Who a prospect is:** 16,409 phone numbers matched in the prototype (one person, or several people sharing the number). **89.8% of the recordings from 17 Aug to 9 Oct get a prospect line** (31,530 one person, 2,053 several people), in line with the prototype's "about 90%". Calls after that show "Not in your databases" until the full databases (about 57,000 contacts) are uploaded and matched in Phase 4. A client whose database has no title or company (Eight Turn Crepe) shows name and phone (setting `prospectShow`).
+- **Recordings:** only calls that have a recording link are listed (the prototype does the same); the count on the button is that number.
+
+## Small choices
+- Quick periods ("Last week", "This month", …) count from today's date in IST. The range starts on everything there is data for, as in the prototype.
+- Names read "Sales Representative" in the two table titles, as in your prompt, and "Representative" everywhere else.
+- The Representative View opens the same row-by-row breakdowns as the prototype; no charts were added (the prototype has none).
+- The earlier "Data status" page is gone from the screen. `GET /api/status` still reports stale feeds, unassigned calls and the missing call direction; these move into the admin data-quality panel in Phase 4.

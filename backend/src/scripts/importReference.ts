@@ -20,7 +20,57 @@ import { loadSettings } from "../services/settings.js";
 type Seed = {
   dims: { reps: string[]; customers: { name: string; kind: string }[] };
   mapping: { cols: string[]; rows: [string, number, number, string][] };
+  // [client, representative, created, order date, invoice, account, total, subtotal]
+  billing: { rows: [number, number, string, string, string, string, number, number][] };
+  // [date, time, representative, client, seconds, disposition, link, prospect index, phone]
+  recordings: { rows: [string, string, number, number, number, number, string, number | null, string | null][] };
+  // [name, company, title, other candidates]
+  prospects: { rows: [string, string, string, string][] };
 };
+
+/** The 10 orders in the prototype's billing sheet (the upload screen comes in Phase 4). */
+async function importBilling(seed: Seed) {
+  const [clients, reps] = await Promise.all([db.client.findMany(), db.representative.findMany()]);
+  const clientId = new Map(clients.map((c) => [c.name, c.id])), repId = new Map(reps.map((r) => [r.name, r.id]));
+  let n = 0;
+  for (const [cu, rep, created, order, invoice, account, total, subtotal] of seed.billing.rows) {
+    const client = clientId.get(seed.dims.customers[cu].name), rp = repId.get(seed.dims.reps[rep]);
+    if (!client || !rp) throw new Error(`Billing row ${invoice}: unknown client or Representative`);
+    const data = { invoiceNo: String(invoice), clientId: client, representativeId: rp, createdDate: new Date(created), orderDate: new Date(order), account, subtotal, total };
+    await db.billingOrder.upsert({ where: { invoiceNo: data.invoiceNo }, create: data, update: data });
+    n++;
+  }
+  return n;
+}
+
+/**
+ * Who each phone number belongs to, as the prototype worked it out from the six client databases: one person,
+ * or several people sharing the number. Only numbers that were actually called are known (about 16,000);
+ * the full databases are uploaded in Phase 4.
+ */
+async function importPhoneMatches(seed: Seed) {
+  const clients = new Map((await db.client.findMany()).map((c) => [c.name, c.id]));
+  const votes = new Map<string, Map<number, number>>(); // "client|phone" -> prospect index -> calls
+  for (const r of seed.recordings.rows) {
+    const idx = r[7], phone = last10(r[8]);
+    if (idx === null || idx < 0 || !phone) continue;
+    const k = `${r[3]}|${phone}`;
+    const m = votes.get(k) ?? votes.set(k, new Map()).get(k)!;
+    m.set(idx, (m.get(idx) ?? 0) + 1);
+  }
+  const rows: { clientId: number; phoneNo10: string; kind: string; name: string; company: string; title: string; candidates: string | null }[] = [];
+  for (const [k, m] of votes) {
+    const [cu, phone] = k.split("|");
+    const clientId = clients.get(seed.dims.customers[Number(cu)].name);
+    if (!clientId) continue;
+    const idx = [...m].sort((a, b) => b[1] - a[1])[0][0];
+    const [name, company, title, others] = seed.prospects.rows[idx];
+    rows.push({ clientId, phoneNo10: phone, kind: others ? "multiple" : "one", name, company, title, candidates: others || null });
+  }
+  await db.phoneMatch.deleteMany({ where: { source: "reference-import" } });
+  for (let i = 0; i < rows.length; i += 5000) await db.phoneMatch.createMany({ data: rows.slice(i, i + 5000), skipDuplicates: true });
+  return rows.length;
+}
 
 // Lines the legacy workbook never listed. They only fill gaps: any sheet row for the same day wins.
 const OVERRIDES: { phone: string; rep: string; client: string; from: string; to: string | null; note: string }[] = [
@@ -57,6 +107,9 @@ async function main() {
   const overrides: ParsedRow[] = OVERRIDES.map((o, i) => ({ rowNo: i + 1, representative: o.rep, client: o.client, phoneNo10: last10(o.phone)!, from: o.from, to: o.to, granularity: "override" }));
   const fb = await commitAssignments({ rows: overrides, layout: "overrides" }, { source: "override", fileName: "legacy overrides", fileHash: fileHash(JSON.stringify(OVERRIDES)), uploadedBy: "import script", priority: 0 });
   console.log(fb.committed ? `Fallback lines: saved ${fb.preview.rows}.` : "Fallback lines: already loaded.");
+
+  console.log(`Billing: ${await importBilling(seed)} orders.`);
+  console.log(`Prospect matches: ${await importPhoneMatches(seed)} phone numbers.`);
 
   const settings = await loadSettings();
   const r = await attributeAndRollup(settings.backfillStart);

@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.js";
 import { statusRouter } from "./routes/status.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { assignmentsRouter } from "./routes/assignments.js";
+import { dashboardRouter } from "./routes/dashboard.js";
 import { ensureReferenceData } from "./services/referenceData.js";
 import { cleanUpAfterCrash, startScheduler } from "./services/jobs.js";
 
@@ -26,6 +27,7 @@ api.use("/auth", authRouter);
 api.use("/status", statusRouter);
 api.use("/jobs", jobsRouter);
 api.use("/admin/assignments", assignmentsRouter);
+api.use(dashboardRouter); // the dashboards' data; mounted last because it asks for a signed-in user on everything that reaches it
 app.use("/api", api);
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));

@@ -28,17 +28,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border border-line bg-surface p-6">
-        <h1 className="text-xl font-semibold">Customer Operations</h1>
-        <input name="email" type="email" required placeholder="Email" autoComplete="username"
-          className="w-full rounded-md border border-line bg-transparent px-3 py-2" />
-        <input name="password" type="password" required placeholder="Password" autoComplete="current-password"
-          className="w-full rounded-md border border-line bg-transparent px-3 py-2" />
-        {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-        <button disabled={busy} className="w-full rounded-md bg-ink py-2 text-surface disabled:opacity-60">
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
+    <main className="login">
+      <form onSubmit={submit}>
+        <h1>Customer Success Operations Dashboard</h1>
+        <input name="email" type="email" required placeholder="Email" autoComplete="username" aria-label="Email" />
+        <input name="password" type="password" required placeholder="Password" autoComplete="current-password" aria-label="Password" />
+        {error && <p role="alert" className="problem">{error}</p>}
+        <button className="go" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       </form>
     </main>
   );
