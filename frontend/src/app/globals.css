@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Roles, not raw hex. Series colors come from the validated reference palette (blue = calls, orange = emails). */
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --page: #f4f4f2;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #75746f;
+  --line: #e4e3df;
+  --grid: #ecebe7;
+  --calls: #2a78d6;
+  --emails: #eb6834;
+  --good: #0a7a3f;
+  --bad: #c0392b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --page: #121211;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --ink-3: #a09f95;
+    --line: #2e2e2c;
+    --grid: #262624;
+    --calls: #3987e5;
+    --emails: #d95926;
+    --good: #4cc38a;
+    --bad: #ff8a7a;
+  }
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-page: var(--page);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-calls: var(--calls);
+  --color-emails: var(--emails);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+}

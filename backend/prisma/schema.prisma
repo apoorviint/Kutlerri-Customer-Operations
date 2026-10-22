@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(VIEWER)
+  createdAt    DateTime @default(now())
+}
+
+// JustCall call logs, synced from the call-logs API (/v1/calls).
+model Call {
+  id             String   @id // API `id`
+  contactNo      String?
+  justcallNo     String?
+  justcallNoName String?
+  agentName      String?
+  recordingUrl   String?
+  duration       Int      @default(0)
+  // API sends `date` + `time` separately; combined here and treated as UTC.
+  startedAt      DateTime
+  disposition    String?
+  syncedAt       DateTime
+
+  @@index([startedAt])
+  @@index([agentName])
+}
+
+// Apollo sequence emails, synced from the call-logs API (/v1/emails). Bodies are not stored.
+model Email {
+  id           String    @id // API `apollo_message_id`
+  sequence     String?
+  sequenceId   String?
+  step         Int?
+  template     String?
+  fromEmail    String?
+  toEmail      String?
+  fromName     String?
+  toName       String?
+  subject      String?
+  sentAt       DateTime?
+  scheduledAt  DateTime?
+  sent         Boolean   @default(false)
+  bounce       Boolean   @default(false)
+  open         Boolean   @default(false)
+  click        Boolean   @default(false)
+  unsubscribe  Boolean   @default(false)
+  replied      Boolean   @default(false)
+  contactId    String?
+  accountId    String?
+  toCompany    String?
+  contactStage String?
+  syncedAt     DateTime
+
+  @@index([sentAt])
+  @@index([sequence])
+  @@index([contactStage])
+}
+
+model SyncRun {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  full       Boolean   @default(false)
+  calls      Int       @default(0)
+  emails     Int       @default(0)
+  error      String?
+}
