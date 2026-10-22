@@ -7,7 +7,12 @@ Two separate apps that talk over HTTP:
 | `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, will serve the dashboards |
 | `frontend/` | Next.js 15, React, Tailwind | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
 
-**Status: Phase 1 of 5** (database and ingestion). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found and assumed.
+**Status: Phase 2 of 5** (ingestion, then who dialed for whom, attribution and daily counts). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
+
+## What Phase 2 adds
+- The **who-dialed-for-whom sheet** is stored as dated rows (weekly, monthly or **daily**; the most specific period wins), with a **preview**, **rollback**, and a no-op when the same sheet is uploaded twice. Endpoints: `POST /api/admin/assignments/preview`, `POST …/commit`, `GET …/uploads`, `POST …/uploads/:id/rollback`. The sheet is sent as rows of cells; the file reader and upload screen come with the admin console in Phase 4.
+- Each call is **attributed** to a Representative and client (or flagged Internal, Unassigned or Undecided) and counted in **daily rollups**. Both refresh automatically after every sync, upload or rollback.
+- `npx tsx src/scripts/importReference.ts "<prototype HTML>"` loads the phone list embedded in the prototype; `npx tsx src/scripts/acceptance.ts "<prototype HTML>"` checks the acceptance numbers (run both from `backend/`).
 
 ## What Phase 1 does
 - Reads **calls** and **emails** from the call-logs API for every day since **2026-08-17**, then keeps them current (calls every 15 minutes, emails every 30).
@@ -46,6 +51,8 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" "http://localhost:4000/api/
 | `emails` | read emails from the API | every 30 min |
 | `recompute-call-times` | re-apply time rules to stored calls (after editing a time zone rule) | on demand |
 | `recompute-email-clients` | re-apply email-to-client rules to stored emails | on demand |
+| `attribute-calls` | work out Representative and client per call, then rebuild the daily counts (`from` and `to` are shift days) | after every sync, upload and rollback |
+| `rebuild-rollups` | rebuild only the daily counts | on demand |
 
 In production use Cloud Scheduler to call the first two (the service can scale to zero, so in-process timers are not reliable).
 

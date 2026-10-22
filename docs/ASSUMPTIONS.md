@@ -41,3 +41,51 @@ Each item says what was assumed, what it is based on, and what would change it.
 
 ## Not in Phase 1
 Who-dialed-for-whom assignments and attribution, daily rollups, billing, prospect databases, the three dashboards, the admin console, Google sign-in.
+
+---
+
+# Phase 2: who dialed for whom, attribution and daily counts
+
+## How the phone-number sheet is stored
+- **Dated rows, not one big table.** Each row says "this line belonged to this Representative and client from this date to that date". A **week** is Monday to Sunday, a **month** is the whole month, a **day** is one day.
+- **Daily uploads are supported** (the sheet after Oct 18 will be uploaded day by day). Weekly, monthly and daily columns can be mixed in one sheet. A heading may be "Week of Oct 12", "Month of October 2026", "Oct 19", "2026-10-19" or an Excel date. **The layout of the daily sheet has not been seen**; the preview shows exactly how every column was read, so check it before saving.
+- **The most specific period wins for a day** (a day beats a week beats a month). This replaces the fixed `MONTHLY_ASSIGNMENTS_START = 2026-10-19` cut-off in the prompt: a monthly upload that overlaps earlier weekly dates automatically keeps the weekly data for those dates, and a daily upload for Oct 19 overrides a monthly row for that one day only.
+- **An upload replaces whole periods, never more.** Re-uploading the week of Oct 12 replaces that week (including numbers that were removed); other weeks are untouched. Nothing is deleted: replaced rows are marked, so **rolling an upload back** brings them back. Uploading the same file twice saves nothing.
+- **A preview comes first** (what is added, replaced, removed, per period). It blocks on: an unknown Representative or client, a line on two clients in the same period, an unreadable cell. It warns (without blocking) about a line shared by two Representatives and about two numbers whose clients swap places between periods (reported, never corrected).
+- A sheet may name the agent (Purbasha Sarkar) instead of the working name (Phoebe); it is stored under the Representative.
+- **Standing fallbacks** (the legacy overrides: Albert, Albert 2 and Scott as Kutlerri lines, Dave's (940) 245-4087 as Cedar's, Dave's (929) 521-6672 as Eight Turn Crepe for the week of Sep 7) only fill gaps; any sheet row for the day wins. The prototype's phone list already has these merged in as ordinary weekly rows, so it was loaded as-is and the overrides were added underneath.
+- What is missing: turning an uploaded xlsx or csv file into rows of cells, and the upload screen. They arrive with the admin console in Phase 4. The save, preview and rollback logic and its endpoints (`/api/admin/assignments/*`, taking the sheet as rows of cells) are done and tested.
+
+## Which Representative and client a call belongs to
+1. The call's phone line and **shift day** find the assignment (most specific period wins).
+2. A line listed for two Representatives in the same period is decided by the call's **agent**. If the agent is neither (or has no Representative) the call is flagged **Undecided**, not guessed.
+3. A line assigned to Kutlerri is **Internal**. A line with no assignment is **Unassigned**. Both are stored and never shown in the three views.
+4. **Agent fallback (a decision for you).** For a call on a line that is *not* on the sheet for that day, the prototype counts it for the agent's Representative's client when that is clear, and the prototype's numbers depend on it (the written spec says such a call is simply Unassigned). The rule, which reproduces every one of the prototype's 49,971 client calls with the same client and Representative:
+   - if the Representative dialed from listed lines of exactly one client that same shift day, that client;
+   - otherwise, if the sheet gives them exactly one customer client (Kutlerri's own lines ignored), that client;
+   - otherwise Unassigned.
+
+   It is the setting `agentFallback` (on by default so the numbers match the prototype). Dave's (346) 423-3909 and (682) 356-3013 are listed in `agentFallbackExcludedLines` so they stay Unassigned, as the prompt says. The status page reports how many calls were counted this way (2,640 so far) and on which lines, so the sheet can be completed.
+
+## Daily counts
+`daily_rollups` holds, per shift day, client, Representative, agent and line: calls, meaningful conversations (a connect longer than 90 seconds), MQLs over 90 seconds, and a count per disposition (plus "no disposition" and "unrecognised text"). Only calls that belong to a client are counted. They are rebuilt for the affected days after every calls sync, after an upload or rollback, and after a time rule changes.
+
+## Acceptance results (shift days 2026-08-17 to 2026-10-09, client lines)
+Run with `npx tsx src/scripts/acceptance.ts "<prototype HTML>"`.
+
+| | Prompt | Counting only calls the workbook also has | Everything the API has |
+|---|---|---|---|
+| Total dials | 49,971 | **49,971** | 50,944 (+973) |
+| Dials per client (all six) and the Sep 10 shift (274) | | **exact** | higher by the extra calls |
+| Connects | 4,160 | 4,168 (+8) | 4,242 |
+| Meaningful conversations | 1,538 | 1,541 (+3) | 1,563 |
+| MQLs (over 90 s / 90 s or less) | 1,023 (828 / 195) | 1,024 (829 / 195) | 1,039 |
+
+Every one of the prototype's 49,971 client calls is in the data with the **same client and the same Representative**. The differences are two data differences, not rule differences:
+1. **+8 connects, +3 meaningful, +1 MQL:** 13 calls received a disposition after the prototype's 13 Oct snapshot (8 became connects). The API holds the newer values.
+2. **+973 calls (1.9%) that are in the API but not in the workbook.** 83% last 0 seconds, and 83% were to a contact the same line had already called in the previous 14 days (40% for ordinary calls), which is what call-backs from prospects look like. **The API has no direction field**, so inbound or missed calls cannot be told apart from outbound ones, and the prompt says only outbound calls count. **This needs a decision**; no filter was guessed.
+
+## Known sheet issues, as expected
+- **Andrew's two numbers swap clients** between the weeks of Sep 21 and Sep 28 (…2756 and …9521). Imported as written; reported when the sheet is previewed.
+- **One shared line:** …0261 in the week of Sep 7 is listed for Dave and Hiya (both Rasa); calls follow the agent.
+- **Calls after the sheet ends** (from Oct 12) have no client until the next sheet is uploaded. The status page says how many and on which lines.
