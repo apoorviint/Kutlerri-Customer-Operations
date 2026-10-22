@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(VIEWER)
+  createdAt    DateTime @default(now())
+  files        UploadedFile[]
+}
+
+// Records fetched from the internal API. `payload` keeps the raw JSON so the
+// mapping in src/lib/api-client.ts can change without losing data.
+model Record {
+  id         String   @id @default(cuid())
+  externalId String   @unique
+  title      String
+  status     String?
+  category   String?
+  value      Float?
+  occurredAt DateTime?
+  payload    Json
+  syncedAt   DateTime @default(now())
+
+  @@index([status])
+  @@index([occurredAt])
+}
+
+model SyncRun {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  fetched    Int       @default(0)
+  error      String?
+}
+
+model UploadedFile {
+  id         String   @id @default(cuid())
+  name       String
+  repoPath   String   @unique
+  sha        String
+  size       Int
+  mimeType   String?
+  htmlUrl    String?
+  uploadedBy User     @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+  createdAt  DateTime @default(now())
+}
