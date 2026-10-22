@@ -15,67 +15,185 @@ enum Role {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String   @map("password_hash")
   role         Role     @default(VIEWER)
-  createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
 }
 
-// JustCall call logs, synced from the call-logs API (/v1/calls).
+// ───────────────────────── reference data ─────────────────────────
+
+enum ClientKind {
+  CUSTOMER // shown in the dashboards
+  INTERNAL // Kutlerri's own prospecting: stored, never shown
+}
+
+model Client {
+  id         Int              @id @default(autoincrement())
+  name       String           @unique
+  kind       ClientKind       @default(CUSTOMER)
+  sortOrder  Int              @default(0) @map("sort_order")
+  emailRules ApolloClientRule[]
+  emails     Email[]
+
+  @@map("clients")
+}
+
+model Representative {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  internal Boolean @default(false) // Kutlerri's own caller: never shown in the dashboards
+  agents   Agent[]
+
+  @@map("representatives")
+}
+
+// A real person on JustCall. Dashboards show the Representative; the agent is kept in the data.
+model Agent {
+  id               Int             @id @default(autoincrement())
+  key              String          @unique // lower-cased, trimmed name (JustCall's casing is inconsistent)
+  name             String
+  representativeId Int?            @map("representative_id")
+  representative   Representative? @relation(fields: [representativeId], references: [id])
+  calls            Call[]
+
+  @@map("agents")
+}
+
+// Which Apollo emails belong to which client. Precedence: mailbox, then sequence, then sender domain.
+model ApolloClientRule {
+  id       Int    @id @default(autoincrement())
+  kind     String // 'domain' | 'mailbox' | 'sequence'
+  value    String // lower-cased
+  clientId Int    @map("client_id")
+  client   Client @relation(fields: [clientId], references: [id])
+
+  @@unique([kind, value])
+  @@map("apollo_client_map")
+}
+
+// The call-logs API gives a bare date and time with no time zone, and not every agent's clock is the same.
+// A rule says: "calls by this agent (and/or on this line) from this local date on were logged in this zone".
+model CallTimezoneRule {
+  id        Int       @id @default(autoincrement())
+  agentKey  String?   @map("agent_key")
+  lineNo10  String?   @map("line_no10")
+  zone      String // IANA name, or a fixed offset such as 'UTC-3'
+  validFrom DateTime  @map("valid_from") @db.Date
+  validTo   DateTime? @map("valid_to") @db.Date
+  note      String?
+
+  @@map("call_timezone_rules")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// ───────────────────────── ingested data ─────────────────────────
+
+// JustCall calls, from the call-logs API (/v1/calls)
 model Call {
-  id             String   @id // API `id`
-  contactNo      String?
-  justcallNo     String?
-  justcallNoName String?
-  agentName      String?
-  recordingUrl   String?
-  duration       Int      @default(0)
-  // API sends `date` + `time` separately; combined here and treated as UTC.
-  startedAt      DateTime
-  disposition    String?
-  syncedAt       DateTime
+  id               String   @id // provider id
+  contactNo10      String?  @map("contact_no10")
+  justcallNo10     String?  @map("justcall_no10")
+  lineName         String?  @map("line_name")
+  agentId          Int?     @map("agent_id")
+  agent            Agent?   @relation(fields: [agentId], references: [id])
+  recordingUrl     String?  @map("recording_url")
+  durationSec      Int      @default(0) @map("duration_sec")
+  // exactly as the provider sent them
+  localDate        DateTime @map("local_date") @db.Date
+  localTime        String   @map("local_time")
+  // what we worked out from them
+  tzUsed           String   @map("tz_used")
+  occurredAt       DateTime @map("occurred_at") // UTC instant
+  shiftDate        DateTime @map("shift_date") @db.Date // 5 PM IST to 5 PM IST
+  dispositionRaw   String?  @map("disposition_raw")
+  dispositionKey   String?  @map("disposition_key") // null = no disposition (counted as No Answer later)
+  providerSyncedAt DateTime? @map("provider_synced_at")
+  ingestedAt       DateTime @default(now()) @map("ingested_at")
+  updatedAt        DateTime @default(now()) @map("updated_at")
+  raw              Json
 
-  @@index([startedAt])
-  @@index([agentName])
+  @@index([shiftDate])
+  @@index([occurredAt])
+  @@index([agentId])
+  @@index([justcallNo10])
+  @@map("calls")
 }
 
-// Apollo sequence emails, synced from the call-logs API (/v1/emails). Bodies are not stored.
+// Apollo emails, from the call-logs API (/v1/emails)
 model Email {
-  id           String    @id // API `apollo_message_id`
-  sequence     String?
-  sequenceId   String?
-  step         Int?
-  template     String?
-  fromEmail    String?
-  toEmail      String?
-  fromName     String?
-  toName       String?
-  subject      String?
-  sentAt       DateTime?
-  scheduledAt  DateTime?
-  sent         Boolean   @default(false)
-  bounce       Boolean   @default(false)
-  open         Boolean   @default(false)
-  click        Boolean   @default(false)
-  unsubscribe  Boolean   @default(false)
-  replied      Boolean   @default(false)
-  contactId    String?
-  accountId    String?
-  toCompany    String?
-  contactStage String?
-  syncedAt     DateTime
+  id             String    @id // apollo_message_id
+  mailbox        String? // sender address, lower-cased
+  senderDomain   String?   @map("sender_domain")
+  clientId       Int?      @map("client_id") // null = not mapped to a client yet
+  client         Client?   @relation(fields: [clientId], references: [id])
+  sequence       String?
+  sequenceId     String?   @map("sequence_id")
+  step           Int?
+  template       String?
+  toEmail        String?   @map("to_email")
+  toName         String?   @map("to_name")
+  toCompany      String?   @map("to_company")
+  subject        String?
+  sentAt         DateTime? @map("sent_at") // UTC
+  sentDatePacific DateTime? @map("sent_date_pacific") @db.Date // the date filter uses Apollo's Pacific date
+  scheduledAt    DateTime? @map("scheduled_at")
+  sent           Boolean   @default(false)
+  bounced        Boolean   @default(false)
+  opened         Boolean   @default(false)
+  clicked        Boolean   @default(false)
+  unsubscribed   Boolean   @default(false)
+  replied        Boolean   @default(false)
+  contactStage   String?   @map("contact_stage")
+  bodyHtml       String?   @map("body_html") // not provided by the call-logs API yet
+  replyText      String?   @map("reply_text")
+  providerSyncedAt DateTime? @map("provider_synced_at")
+  ingestedAt     DateTime  @default(now()) @map("ingested_at")
+  updatedAt      DateTime  @default(now()) @map("updated_at")
+  raw            Json
 
-  @@index([sentAt])
-  @@index([sequence])
-  @@index([contactStage])
+  @@index([sentDatePacific])
+  @@index([clientId, sentDatePacific])
+  @@index([senderDomain])
+  @@map("emails")
 }
 
+// One row per ingestion run. Re-running a job for a date range is always safe.
 model SyncRun {
-  id         String    @id @default(cuid())
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
-  ok         Boolean   @default(false)
-  full       Boolean   @default(false)
-  calls      Int       @default(0)
-  emails     Int       @default(0)
-  error      String?
+  id          String    @id @default(cuid())
+  source      String // 'calls' | 'emails' | 'recompute-call-times'
+  kind        String // 'incremental' | 'backfill' | 'range'
+  windowFrom  DateTime? @map("window_from") @db.Date
+  windowTo    DateTime? @map("window_to") @db.Date
+  startedAt   DateTime  @default(now()) @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+  status      String    @default("running") // running | ok | warning | failed
+  fetched     Int       @default(0)
+  inserted    Int       @default(0)
+  updated     Int       @default(0)
+  unchanged   Int       @default(0)
+  skipped     Int       @default(0)
+  error       String?
+  details     Json?
+  triggeredBy String    @default("schedule") @map("triggered_by")
+
+  @@index([source, startedAt])
+  @@map("sync_runs")
+}
+
+// Stops two copies of the same job running at once (the 15-minute timer and a manual run, say).
+model JobLock {
+  name     String   @id
+  lockedAt DateTime @map("locked_at")
+  lockedBy String   @map("locked_by")
+
+  @@map("job_locks")
 }

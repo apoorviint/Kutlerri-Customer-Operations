@@ -15,12 +15,12 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const me = await api<Me>("/auth/login", {
+      await api<Me>("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: f.get("email"), password: f.get("password") }),
       });
-      router.replace(me.role === "ADMIN" ? "/admin" : "/dashboard");
+      router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
       setBusy(false);

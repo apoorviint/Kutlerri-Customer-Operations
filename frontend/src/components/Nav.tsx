@@ -22,8 +22,7 @@ export default function Nav({ me }: { me: Me | null }) {
   return (
     <header className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
       <span className="font-semibold">Customer Ops</span>
-      {link("/dashboard", "Dashboard")}
-      {me?.role === "ADMIN" && link("/admin", "Admin")}
+      {link("/dashboard", "Data status")}
       <span className="ml-auto text-sm text-ink-2">{me?.email}</span>
       <button onClick={logout} className="text-sm underline">Sign out</button>
     </header>

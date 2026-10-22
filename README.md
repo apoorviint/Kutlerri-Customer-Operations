@@ -1,45 +1,61 @@
-# Kutlerri Customer Operations
+# Kutlerri Customer Success Operations Dashboard
 
-Two separate apps that talk to each other over HTTP:
+Two separate apps that talk over HTTP:
 
 | | Stack | Role |
 |---|---|---|
-| `backend/` | Express, TypeScript, Prisma, PostgreSQL | Login, syncs calls and emails from the call-logs API into Postgres, serves stats and tables, parses Excel files, commits admin uploads to GitHub |
-| `frontend/` | Next.js 15, React, Tailwind, Recharts | The dashboard and admin UI. It holds no secrets or data of its own |
+| `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, will serve the dashboards |
+| `frontend/` | Next.js 15, React, Tailwind | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
 
-The frontend proxies `/api/*` to the backend (`BACKEND_URL`, see `frontend/next.config.ts`). The browser only ever talks to the frontend, so the session cookie is same-origin: no CORS and no third-party cookies.
+**Status: Phase 1 of 5** (database and ingestion). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found and assumed.
 
-## Data flow
-- **Calls and emails:** `https://call-logs-api-…run.app/v1/calls` and `/v1/emails` are synced into Postgres. The first sync loads everything (about 111k rows, around 4 minutes). Later syncs fetch only the last two days and take seconds. Trigger it from Admin, or on a schedule with `POST /api/sync?wait=1` and `Authorization: Bearer $CRON_SECRET`.
-- **Spreadsheets:** an admin uploads a file, the backend commits it to `backend/data/` on GitHub (fine-grained token), your host rebuilds the backend image, and the dashboard shows the new `.xlsx` files. No database is involved.
+## What Phase 1 does
+- Reads **calls** and **emails** from the call-logs API for every day since **2026-08-17**, then keeps them current (calls every 15 minutes, emails every 30).
+- Stores calls with their provider time, the UTC instant, the **IST shift day** (5 PM to 5 PM IST), the agent and a mapped disposition.
+- Stores emails with the **client (by sender domain)** and Apollo's **Pacific date**.
+- Running a job again never duplicates or rewrites anything; changed rows are updated in place.
+- `GET /api/status` and a small "Data status" page show what is stored, when it last synced, and what needs attention.
 
 ## Run locally
 ```
-# terminal 1
+# terminal 1: backend
 cd backend
 npm install
-cp .env.example .env        # fill in DATABASE_URL, AUTH_SECRET, ADMIN_*, GITHUB_*
+cp .env.example .env         # fill in DATABASE_URL, AUTH_SECRET, ADMIN_*
 npx prisma migrate deploy
-npm run db:seed             # creates the admin user
-npm run dev                 # http://localhost:4000
+npm run db:seed              # creates the admin user
+npm run dev                  # http://localhost:4000   (set ENABLE_SCHEDULER=true to run the timers)
 
-# terminal 2
+# terminal 2: frontend
 cd frontend
 npm install
-cp .env.example .env        # BACKEND_URL=http://localhost:4000
-npm run dev                 # http://localhost:3000
+cp .env.example .env         # BACKEND_URL=http://localhost:4000
+npm run dev                  # http://localhost:3000
 ```
-The Postgres database must be **UTF-8** (the default on any normal install). Names in the data contain non-Latin characters.
+The first run of the calls job loads everything since 17 Aug (about 66,000 calls, around 3 minutes). Start it from the command line:
+```
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" "http://localhost:4000/api/jobs/calls/run?wait=1"
+```
+
+## Jobs
+`POST /api/jobs/<name>/run` (admin session, or `Authorization: Bearer $CRON_SECRET`). Add `?from=YYYY-MM-DD&to=YYYY-MM-DD` to re-run a date range, and `?wait=1` to wait for the result. `GET /api/jobs/runs` lists recent runs.
+
+| Job | What it does | Schedule |
+|---|---|---|
+| `calls` | read calls from the API | every 15 min |
+| `emails` | read emails from the API | every 30 min |
+| `recompute-call-times` | re-apply time rules to stored calls (after editing a time zone rule) | on demand |
+| `recompute-email-clients` | re-apply email-to-client rules to stored emails | on demand |
+
+In production use Cloud Scheduler to call the first two (the service can scale to zero, so in-process timers are not reliable).
+
+## Tests
+```
+cd backend
+npm test                                   # the business rules (no database needed)
+TEST_DATABASE_URL="postgresql://…/customer_ops_test" npm test   # plus the ingestion tests (needs an empty UTF-8 Postgres)
+```
 
 ## Deploy
-- **Backend:** `backend/Dockerfile` (fits Cloud Run). It runs `prisma migrate deploy` on start. Redeploy on every push to `main` so uploaded spreadsheets reach the running service.
-- **Frontend:** any Next.js host (Vercel etc.) with `BACKEND_URL` set to the backend's public URL.
-
-## GitHub token
-Fine-grained personal access token, **only this repository**, Repository permissions: **Contents = Read and write** (Metadata read-only is added automatically). Nothing else. Set an expiry and renew it. Make sure `main` is not protected against direct pushes, or point `GITHUB_BRANCH` at an unprotected branch your host deploys.
-
-## Notes
-- Call times from the API have no timezone, so they are shown as stored and labelled UTC.
-- The call-logs API pages by offset over a sort with ties, which can skip rows. The sync detects that (distinct ids vs the API's total) and re-walks with a different page size.
-- The call-logs API is currently public and exposes phone numbers and email addresses. Consider protecting it, and set `CALL_LOGS_API_TOKEN` if you do.
-- Only `.xlsx` is parsed for display (not legacy `.xls`).
+- **Backend:** `backend/Dockerfile` (Cloud Run). It runs `prisma migrate deploy` on start.
+- **Frontend:** a Next.js host such as Vercel, with `BACKEND_URL` set to the backend's public URL.

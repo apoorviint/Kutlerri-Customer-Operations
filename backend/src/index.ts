@@ -3,11 +3,11 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { config } from "./config.js";
 import { db } from "./db.js";
-import { requireUser } from "./auth.js";
 import { authRouter } from "./routes/auth.js";
-import { statsRouter } from "./routes/stats.js";
-import { recordsRouter } from "./routes/records.js";
-import { filesRouter } from "./routes/files.js";
+import { statusRouter } from "./routes/status.js";
+import { jobsRouter } from "./routes/jobs.js";
+import { ensureReferenceData } from "./services/referenceData.js";
+import { cleanUpAfterCrash, startScheduler } from "./services/jobs.js";
 
 const app = express();
 app.set("trust proxy", 1); // behind the frontend proxy / a load balancer
@@ -20,9 +20,8 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 const api = express.Router();
 api.use("/auth", authRouter);
-api.use("/stats", requireUser, statsRouter);
-api.use(recordsRouter); // /calls, /emails (auth applied per route)
-api.use(filesRouter); // /files, /sheets, /admin/*, /sync/* (each route enforces its own auth)
+api.use("/status", statusRouter);
+api.use("/jobs", jobsRouter);
 app.use("/api", api);
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));
@@ -31,8 +30,20 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   res.status(500).json({ error: "Internal server error" });
 });
 
-const server = app.listen(config.port, () => console.log(`Backend listening on :${config.port}`));
-
-for (const sig of ["SIGINT", "SIGTERM"] as const) {
-  process.on(sig, () => server.close(() => db.$disconnect().finally(() => process.exit(0))));
+async function main() {
+  await ensureReferenceData();
+  await cleanUpAfterCrash();
+  const server = app.listen(config.port, () => console.log(`Backend listening on :${config.port}`));
+  const stopScheduler = startScheduler();
+  for (const sig of ["SIGINT", "SIGTERM"] as const) {
+    process.on(sig, () => {
+      stopScheduler();
+      server.close(() => db.$disconnect().finally(() => process.exit(0)));
+    });
+  }
 }
+
+main().catch((e) => {
+  console.error("Failed to start:", e);
+  process.exit(1);
+});
