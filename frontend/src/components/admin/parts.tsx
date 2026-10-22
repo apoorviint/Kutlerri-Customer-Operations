@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, api } from "@/lib/api";
 
 /** Small pieces every admin screen uses. */
 
@@ -74,6 +74,48 @@ export function FilePick({ accept, label, file, onFile }: { accept: string; labe
     <div className="filepick">
       <input ref={ref} type="file" accept={accept} aria-label={label} onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
       {file && <button type="button" className="link" onClick={() => { onFile(null); if (ref.current) ref.current.value = ""; }}>Clear</button>}
+    </div>
+  );
+}
+
+type ClientOption = { id: number; name: string };
+
+/**
+ * Pick a client from the list or type its name. A name that is not on the list can be added as a new client
+ * right here; it is then selected.
+ */
+export function ClientPicker({ clients, value, onChange, onAdded, label = "Client" }: {
+  clients: ClientOption[]; value: number | null; onChange: (id: number | null) => void;
+  onAdded: (client: ClientOption) => void; label?: string;
+}) {
+  const act = useAction();
+  const selected = clients.find((c) => c.id === value);
+  const [text, setText] = useState(selected?.name ?? "");
+  useEffect(() => { if (selected) setText(selected.name); }, [selected]);
+  const typed = text.trim().replace(/\s+/g, " ");
+  const match = clients.find((c) => c.name.toLowerCase() === typed.toLowerCase());
+
+  function type(v: string) {
+    setText(v);
+    act.clear();
+    const m = clients.find((c) => c.name.toLowerCase() === v.trim().replace(/\s+/g, " ").toLowerCase());
+    onChange(m ? m.id : null);
+  }
+  async function add() {
+    const c = await act.run(() => api<ClientOption>("/admin/clients", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: typed }) }));
+    if (c) { setText(c.name); onAdded(c); }
+  }
+
+  return (
+    <div className="clientpick">
+      <label>{label}
+        <input list="client-options" value={text} onChange={(e) => type(e.target.value)} placeholder="Choose or type a client…" aria-label={label} autoComplete="off" />
+        <datalist id="client-options">{clients.map((c) => <option key={c.id} value={c.name} />)}</datalist>
+      </label>
+      {typed && !match && (
+        <button type="button" className="btn" disabled={act.busy} onClick={add}>{act.busy ? "Adding…" : `Add “${typed}” as a new client`}</button>
+      )}
+      <ErrorBox error={act.error} />
     </div>
   );
 }

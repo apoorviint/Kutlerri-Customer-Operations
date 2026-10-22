@@ -1,32 +1,13 @@
 name: CI
 on:
+  # The backend commits each uploaded spreadsheet to uploads/ on main; those commits need no build.
   push:
+    paths-ignore: ["uploads/**"]
   pull_request:
+    paths-ignore: ["uploads/**"]
 
+# The backend now lives in the customer_call_logs_dashboard repository (Python, FastAPI).
 jobs:
-  backend:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: backend } }
-    services:
-      postgres:
-        image: postgres:16
-        env: { POSTGRES_PASSWORD: pw, POSTGRES_DB: customer_ops_test }
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://postgres:pw@localhost:5432/customer_ops_test?schema=public
-      DATABASE_URL: postgresql://postgres:pw@localhost:5432/customer_ops_test?schema=public
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-
   frontend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }

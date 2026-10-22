@@ -36,11 +36,11 @@ export default function Billing() {
   }
   async function commit() {
     if (!preview) return;
-    const r = await act.run(() => api<{ committed: boolean; message?: string }>("/admin/files/billing/commit", {
+    const r = await act.run(() => api<{ committed: boolean; message?: string; warning?: string }>("/admin/files/billing/commit", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stagedId: preview.stagedId, fileName: preview.fileName, sheet: preview.sheet }),
     }));
     if (!r) return;
-    setDone(r.committed ? "Saved. The revenue figures are updated." : (r.message ?? "Nothing to save."));
+    setDone(r.committed ? `Saved. The revenue figures are updated.${r.warning ? ` ${r.warning}` : ""}` : (r.message ?? "Nothing to save."));
     setPreview(null); setFile(null); setTick((t) => t + 1);
   }
   async function rollback(id: number) {

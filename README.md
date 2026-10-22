@@ -1,11 +1,13 @@
 # Kutlerri Customer Success Operations Dashboard
 
-Two separate apps that talk over HTTP:
+Two parts that talk over HTTP:
 
-| | Stack | Role |
-|---|---|---|
-| `backend/` | Express, TypeScript, Prisma, PostgreSQL | Collects calls and emails on a schedule, applies the business rules, serves every number the dashboards show |
-| `frontend/` | Next.js 15, React | The website. It holds no data or secrets and proxies `/api/*` to the backend (`BACKEND_URL`) |
+| | Where | Stack | Role |
+|---|---|---|---|
+| Backend | [`customer_call_logs_dashboard`](../customer_call_logs_dashboard) (separate repository) | FastAPI, SQLAlchemy, Alembic, Neon Postgres | Syncs JustCall calls and Apollo emails, applies the business rules, serves every number the dashboards show (`/api/*`), handles sign-in and reads the admin uploads. |
+| Website | `frontend/` (this repository) | Next.js 15, React | Proxies `/api/*` to the backend (`BACKEND_URL`). Its server keeps each saved upload in GitHub (`uploads/` on main of this repository, `GITHUB_TOKEN`); the token never reaches the browser |
+
+The backend used to be an Express/Prisma app in `backend/` here. It was moved into the Python service so there is one backend and one database; every `/api/*` endpoint and response stayed the same, so the website did not change.
 
 **Status: Phase 5 of 5** (sign-in, roles, hardening, deploy). Deploying: [docs/DEPLOY.md](docs/DEPLOY.md). When something looks wrong: [docs/RUNBOOK.md](docs/RUNBOOK.md). See [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md) for what was found, assumed and still needs a decision.
 
@@ -24,9 +26,9 @@ An **Admin console** (`/admin`, administrators only; the dashboard header shows 
 - **Billing**: upload the billing sheet; orders are added or updated by invoice number; preview with differences and flagged totals; history and rollback (latest upload); the Overview shows when billing was last uploaded.
 - **Mappings and settings**: agent to Representative, email sender to client (domain, mailbox or sequence), time zone rules, schedules and break rules, the agent-fallback rule, the start date, new Representatives and clients.
 - **Jobs**: re-run any job for a date range; recent runs. **Audit log**: every upload, rollback, job run and setting change.
-- Template downloads for every upload (`GET /api/admin/templates/<name>`). Uploaded files are kept in private storage (`UPLOAD_DIR`, never served directly).
+- Template downloads for every upload (`GET /api/admin/templates/<name>`). Uploaded files are kept in GitHub under `uploads/` (never served by the app).
 - Endpoints (all admin only): `/api/admin/files/{assignments,billing,prospects}/…`, `/api/admin/{mappings,settings,agents,apollo-rules,tz-rules,representatives,clients,data-quality,audit,templates}`.
-- `backend/.env` also needs `UPLOAD_DIR` (default `./data/uploads`).
+- The website keeps each saved upload in GitHub (`GITHUB_TOKEN`, `GITHUB_UPLOADS_REPO`, `GITHUB_UPLOADS_BRANCH` in `frontend/.env`); the backend deletes its copy once the rows are saved.
 
 ## What Phase 3 adds
 - **Overview** (opens first), **Representative View** and **Client View**, in the prototype's purple look (light and dark): date range and quick periods, KPI cards with the change against the days before, expandable and sortable calls tables, weekly revenue with hover lists, call timing and breaks (daily and weekly), Representative and client profiles with call recordings (prospect lines, search, filters) and a client's emails.
@@ -36,7 +38,7 @@ An **Admin console** (`/admin`, administrators only; the dashboard header shows 
 ## What Phase 2 adds
 - The **who-dialed-for-whom sheet** is stored as dated rows (weekly, monthly or **daily**; the most specific period wins), with a **preview**, **rollback**, and a no-op when the same sheet is uploaded twice. Endpoints: `POST /api/admin/assignments/preview`, `POST …/commit`, `GET …/uploads`, `POST …/uploads/:id/rollback`. The sheet is sent as rows of cells; the file reader and upload screen come with the admin console in Phase 4.
 - Each call is **attributed** to a Representative and client (or flagged Internal, Unassigned or Undecided) and counted in **daily rollups**. Both refresh automatically after every sync, upload or rollback.
-- `npx tsx src/scripts/importReference.ts "<prototype HTML>"` loads the phone list embedded in the prototype; `npx tsx src/scripts/acceptance.ts "<prototype HTML>"` checks the acceptance numbers (run both from `backend/`).
+- `call-email-import-reference "<prototype HTML>"` (in the backend) loads the phone list embedded in the prototype.
 
 ## What Phase 1 does
 - Reads **calls** and **emails** from the call-logs API for every day since **2026-08-17**, then keeps them current (calls every 15 minutes, emails every 30).
@@ -47,46 +49,39 @@ An **Admin console** (`/admin`, administrators only; the dashboard header shows 
 
 ## Run locally
 ```
-# terminal 1: backend
-cd backend
-npm install
-cp .env.example .env         # fill in DATABASE_URL, AUTH_SECRET, ADMIN_*
-npx prisma migrate deploy
-npm run db:seed              # creates the admin user
-npm run dev                  # http://localhost:4000   (set ENABLE_SCHEDULER=true to run the timers)
+# terminal 1: backend (in ../customer_call_logs_dashboard, see its README)
+python -m venv .venv && .venv/bin/pip install -e ".[dev]"
+cp .env.example .env.local     # DATABASE_URL, AUTH_SECRET, ADMIN_EMAIL/ADMIN_PASSWORD ...
+.venv/bin/alembic upgrade head
+.venv/bin/call-email-seed-admin
+.venv/bin/call-email-api       # http://localhost:8080   (ENABLE_SCHEDULER=true runs the timers)
 
-# terminal 2: frontend
+# terminal 2: website
 cd frontend
 npm install
-cp .env.example .env         # BACKEND_URL=http://localhost:4000
-npm run dev                  # http://localhost:3000
+cp .env.example .env           # BACKEND_URL=http://localhost:8080, GITHUB_TOKEN, GITHUB_UPLOADS_REPO
+npm run dev                    # http://localhost:3000
 ```
-The first run of the calls job loads everything since 17 Aug (about 66,000 calls, around 3 minutes). Start it from the command line:
+Load calls and emails into the dashboard (from the synced JustCall and Apollo tables):
 ```
-curl -X POST -H "Authorization: Bearer $CRON_SECRET" "http://localhost:4000/api/jobs/calls/run?wait=1"
+.venv/bin/call-email-ops-job calls
+.venv/bin/call-email-ops-job emails
 ```
 
 ## Jobs
-`POST /api/jobs/<name>/run` (admin session, or `Authorization: Bearer $CRON_SECRET`). Add `?from=YYYY-MM-DD&to=YYYY-MM-DD` to re-run a date range, and `?wait=1` to wait for the result. `GET /api/jobs/runs` lists recent runs.
+`POST /api/jobs/<name>/run` (admin session, or `Authorization: Bearer $CRON_SECRET`), or `call-email-ops-job <name>`. Add `?from=YYYY-MM-DD&to=YYYY-MM-DD` to re-run a date range, and `?wait=1` to wait for the result. `GET /api/jobs/runs` lists recent runs.
 
 | Job | What it does | Schedule |
 |---|---|---|
-| `calls` | read calls from the API | every 15 min |
-| `emails` | read emails from the API | every 30 min |
+| `calls` | copy calls from `justcall_calls` (time rules, shift day) | every 15 min |
+| `emails` | copy emails from `apollo_sequence_emails` (client, Pacific date) | every 30 min |
 | `recompute-call-times` | re-apply time rules to stored calls (after editing a time zone rule) | on demand |
 | `recompute-email-clients` | re-apply email-to-client rules to stored emails | on demand |
-| `attribute-calls` | work out Representative and client per call, then rebuild the daily counts (`from` and `to` are shift days) | after every sync, upload and rollback |
+| `attribute-calls` | work out Representative and client per call, then rebuild the daily counts | after every sync, upload and rollback |
 | `rebuild-rollups` | rebuild only the daily counts | on demand |
 
-In production use Cloud Scheduler to call the first two (the service can scale to zero, so in-process timers are not reliable).
-
 ## Tests
-```
-cd backend
-npm test                                   # the business rules (no database needed)
-TEST_DATABASE_URL="postgresql://…/customer_ops_test" npm test   # plus the ingestion tests (needs an empty UTF-8 Postgres)
-```
+Website: `npx tsc --noEmit && npm run build`; `npm run e2e` drives the real dashboard (needs both apps running with data). Backend: see its README.
 
 ## Deploy
-- **Backend:** `backend/Dockerfile` (Cloud Run). It runs `prisma migrate deploy` on start.
-- **Frontend:** `frontend/Dockerfile` (Cloud Run) or a Next.js host such as Vercel, with `BACKEND_URL` pointing at the backend. Vercel caps upload size at about 4.5 MB; see docs/DEPLOY.md.
+See [docs/DEPLOY.md](docs/DEPLOY.md). The website goes on Cloud Run (or Vercel, with the 4.5 MB upload cap) with `BACKEND_URL` pointing at the backend service.

@@ -33,11 +33,11 @@ export default function Assignments() {
   }
   async function commit() {
     if (!preview) return;
-    const r = await act.run(() => api<{ committed: boolean; message?: string; recalculating?: { from: string; to: string | null } }>("/admin/files/assignments/commit", {
+    const r = await act.run(() => api<{ committed: boolean; message?: string; warning?: string; recalculating?: { from: string; to: string | null } }>("/admin/files/assignments/commit", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stagedId: preview.stagedId, fileName: preview.fileName, sheet: preview.sheet }),
     }));
     if (!r) return;
-    setDone(r.committed ? `Saved. The calls from ${r.recalculating?.from ?? "the start"} onwards are being recalculated in the background.` : (r.message ?? "Nothing to save."));
+    setDone(r.committed ? `Saved. The calls from ${r.recalculating?.from ?? "the start"} onwards are being recalculated in the background.${r.warning ? ` ${r.warning}` : ""}` : (r.message ?? "Nothing to save."));
     setPreview(null); setFile(null); setTick((t) => t + 1);
   }
   async function rollback(id: number) {

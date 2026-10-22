@@ -28,7 +28,7 @@ Each item says what was assumed, what it is based on, and what would change it.
 - **Calls have no direction and need none.** Every call counts normally under the person's and client's name (decision taken).
 - **Agents** are matched on a lower-cased name (the API writes "krissh singh"). The seeded mapping is the one in the prompt. **A new agent, "Baishnavi Sahoo" (525 calls, 12 to 17 Oct), is not mapped to a Representative** and is shown as a warning until an admin maps them.
 - **Dispositions:** "Dispositions: X" is mapped to the 11 keys. An empty value stays empty (it counts as No Answer later). A new text is stored as-is, not guessed, and reported on the sync run.
-- Connect, answered, meaningful (strictly over 90 s) and MQL rules are in `backend/src/rules/calls.ts` and covered by tests.
+- Connect, answered, meaningful (strictly over 90 s) and MQL rules are in the backend's `ops/rules/calls.py` and covered by tests.
 
 ## Reading the API safely
 - **The API pages by position over a list sorted by date and time, with many ties.** A row on a page boundary can appear twice while a neighbour is skipped (2 of 80,154 calls were lost in a first test). Each date window is read until the distinct ids received equal the API's total, re-reading with a different page size if needed. A shortfall that survives four attempts is reported as a warning, never hidden.
@@ -74,7 +74,7 @@ Who-dialed-for-whom assignments and attribution, daily rollups, billing, prospec
 `daily_rollups` holds, per shift day, client, Representative, agent and line: calls, meaningful conversations (a connect longer than 90 seconds), MQLs over 90 seconds, and a count per disposition (plus "no disposition" and "unrecognised text"). Only calls that belong to a client are counted. They are rebuilt for the affected days after every calls sync, after an upload or rollback, and after a time rule changes.
 
 ## Acceptance results (shift days 2026-08-17 to 2026-10-09, client lines)
-Run with `npx tsx src/scripts/acceptance.ts "<prototype HTML>"`.
+(The acceptance script was part of the old Node backend and was not carried over; it can be recovered from git history.)
 
 The current defaults (`agentFallback` off, as decided):
 

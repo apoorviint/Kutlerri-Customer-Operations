@@ -12,7 +12,7 @@ Start at **Admin console → Data quality**. It lists what is wrong in plain wor
 Open **Jobs**. Common notes:
 - *"received X of Y rows even after retrying"*: the API's paging skipped rows. Press **Run** for that date range.
 - *"rows could not be read"*: a row had a bad value; the others were saved. The note names the reason.
-- *"Unrecognised dispositions"*: a new call outcome appeared. It is kept as "no disposition" until the mapping is extended in code (`backend/src/rules/calls.ts`).
+- *"Unrecognised dispositions"*: a new call outcome appeared. It is kept as "no disposition" until the mapping is extended in code (`src/call_email_dashboard/ops/rules/calls.py` in the backend repository).
 
 To repair a period: **Jobs → Calls (or Emails) → From/To → Run**. Re-running is always safe and never duplicates.
 

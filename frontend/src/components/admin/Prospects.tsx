@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Async } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
-import { ErrorBox, FilePick, Notice, Pill, Table, TemplateLink, n, useAction, when } from "./parts";
+import { ClientPicker, ErrorBox, FilePick, Notice, Pill, Table, TemplateLink, n, useAction, when } from "./parts";
 
 type Mappings = { clients: { id: number; name: string; kind: string }[] };
 type Batch = {
@@ -14,7 +14,8 @@ type Batch = {
 };
 
 export default function Prospects() {
-  const mappings = useApi<Mappings>("/admin/mappings");
+  const [clientsTick, setClientsTick] = useState(0); // reloads the client list after one is added here
+  const mappings = useApi<Mappings>(`/admin/mappings?c=${clientsTick}`);
   const [tick, setTick] = useState(0);
   const [clientId, setClientId] = useState<number | null>(null);
   const batches = useApi<Batch[]>(`/admin/files/prospects/batches?x=${tick}${clientId ? `&clientId=${clientId}` : ""}`);
@@ -44,8 +45,8 @@ export default function Prospects() {
     f.set("replace", String(replace));
     if (replace) f.set("confirmReplace", "true");
     f.set("file", file);
-    const r = await act.run(() => api<{ batchId: number }>("/admin/files/prospects/upload", { method: "POST", body: f }));
-    if (r) { setMsg("Uploaded. The file is being read in the background; progress shows below."); setFile(null); setReplace(false); setConfirming(false); setTick((x) => x + 1); }
+    const r = await act.run(() => api<{ batchId: number; warning?: string }>("/admin/files/prospects/upload", { method: "POST", body: f }));
+    if (r) { setMsg(`Uploaded. The file is being read in the background; progress shows below.${r.warning ? ` ${r.warning}` : ""}`); setFile(null); setReplace(false); setConfirming(false); setTick((x) => x + 1); }
   }
   async function rollback(id: number) {
     const r = await act.run(() => api<{ rolledBack: boolean }>(`/admin/files/prospects/batches/${id}/rollback`, { method: "POST" }));
@@ -61,12 +62,9 @@ export default function Prospects() {
           with “phone” or “mobile” in its name except head-office (HQ) numbers. Numbers are matched on their last 10 digits, within the same client only. <TemplateLink name="prospects" label="Download an example" />
         </p>
         <div className="adm-form">
-          <label>Client
-            <select aria-label="Client for this database" value={clientId ?? ""} onChange={(e) => { setClientId(e.target.value ? Number(e.target.value) : null); setConfirming(false); }}>
-              <option value="">Choose a client…</option>
-              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
+          <ClientPicker label="Client for this database" clients={customers} value={clientId}
+            onChange={(id) => { setClientId(id); setConfirming(false); }}
+            onAdded={(c) => { setClientsTick((x) => x + 1); setClientId(c.id); setConfirming(false); }} />
           <FilePick accept=".xlsx,.xlsm,.csv" label="Prospect database file" file={file} onFile={(f) => { setFile(f); setMsg(null); }} />
         </div>
         <label className="check">
