@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { commitFile } from "@/lib/github";
 
@@ -22,13 +21,7 @@ export async function POST(req: Request) {
       Buffer.from(await file.arrayBuffer()),
       `Upload ${file.name} via dashboard (${s.email})`,
     );
-    const row = await db.uploadedFile.create({
-      data: {
-        name: file.name, repoPath: out.path, sha: out.sha, size: file.size,
-        mimeType: file.type || null, htmlUrl: out.htmlUrl, uploadedById: s.userId,
-      },
-    });
-    return NextResponse.json(row);
+    return NextResponse.json({ name: file.name, ...out });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Upload failed" }, { status: 502 });
   }

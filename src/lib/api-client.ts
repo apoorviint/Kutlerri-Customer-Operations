@@ -1,39 +1,45 @@
 import { z } from "zod";
 
 /**
- * Internal API client. The response shape below is a PLACEHOLDER —
- * adjust ApiItem and mapItem() once the real endpoint/sample JSON is known.
+ * Internal API client for calls and mails. Endpoint paths and field names are PLACEHOLDERS:
+ * adjust CALLS_PATH / MAILS_PATH and mapCall() / mapMail() once the real API is known.
  */
-const ApiItem = z
-  .object({
-    id: z.union([z.string(), z.number()]),
-    title: z.string().optional(),
-    status: z.string().nullish(),
-    category: z.string().nullish(),
-    value: z.number().nullish(),
-    date: z.string().nullish(),
-  })
-  .passthrough();
+const CALLS_PATH = "/calls";
+const MAILS_PATH = "/mails";
 
-export type MappedRecord = {
-  externalId: string;
-  title: string;
-  status: string | null;
-  category: string | null;
-  value: number | null;
-  occurredAt: Date | null;
-  payload: unknown;
+const Item = z.object({ id: z.union([z.string(), z.number()]) }).passthrough();
+type Raw = z.infer<typeof Item> & Record<string, unknown>;
+
+const str = (v: unknown) => (v == null ? null : String(v));
+const num = (v: unknown) => (typeof v === "number" ? Math.round(v) : v == null ? null : Math.round(Number(v)) || null);
+const date = (v: unknown) => {
+  if (v == null) return null;
+  const d = new Date(String(v));
+  return isNaN(d.getTime()) ? null : d;
 };
 
-function mapItem(raw: z.infer<typeof ApiItem>): MappedRecord {
+export function mapCall(r: Raw) {
   return {
-    externalId: String(raw.id),
-    title: raw.title ?? `Item ${raw.id}`,
-    status: raw.status ?? null,
-    category: raw.category ?? null,
-    value: raw.value ?? null,
-    occurredAt: raw.date ? new Date(raw.date) : null,
-    payload: raw,
+    externalId: String(r.id),
+    direction: str(r.direction),
+    agent: str(r.agent),
+    customer: str(r.customer),
+    status: str(r.status),
+    durationSec: num(r.duration),
+    startedAt: date(r.started_at ?? r.date),
+    payload: r,
+  };
+}
+
+export function mapMail(r: Raw) {
+  return {
+    externalId: String(r.id),
+    subject: str(r.subject),
+    fromAddr: str(r.from),
+    toAddr: str(r.to),
+    status: str(r.status),
+    sentAt: date(r.sent_at ?? r.date),
+    payload: r,
   };
 }
 
@@ -47,12 +53,15 @@ function headers(): HeadersInit {
   return h;
 }
 
-export async function fetchRecords(path = "/records"): Promise<MappedRecord[]> {
+async function fetchList(path: string): Promise<Raw[]> {
   const base = process.env.API_BASE_URL;
   if (!base) throw new Error("API_BASE_URL is not set");
   const res = await fetch(new URL(path, base), { headers: headers(), cache: "no-store" });
-  if (!res.ok) throw new Error(`API ${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(`API ${path}: ${res.status} ${res.statusText}`);
   const json = await res.json();
   const list = Array.isArray(json) ? json : (json.data ?? json.items ?? []);
-  return z.array(ApiItem).parse(list).map(mapItem);
+  return z.array(Item).parse(list) as Raw[];
 }
+
+export const fetchCalls = async () => (await fetchList(CALLS_PATH)).map(mapCall);
+export const fetchMails = async () => (await fetchList(MAILS_PATH)).map(mapMail);
