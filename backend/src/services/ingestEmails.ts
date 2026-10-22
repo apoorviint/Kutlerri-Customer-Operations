@@ -116,7 +116,7 @@ export async function upsertEmails(rows: EmailRow[]) {
 
 /** Reads one date window (the provider's dates) of emails from the API and stores it. Safe to repeat. */
 export async function ingestEmailsWindow(ctx: EmailContext, from: string, to: string): Promise<WindowResult> {
-  const out: WindowResult = { fetched: 0, inserted: 0, updated: 0, unchanged: 0, skipped: 0, distinct: 0, total: 0, passes: 0, unknownDispositions: {}, errors: [] };
+  const out: WindowResult = { fetched: 0, inserted: 0, updated: 0, unchanged: 0, skipped: 0, distinct: 0, total: 0, passes: 0, unknownDispositions: {}, unknownDirections: {}, errors: [] };
   const w = await fetchWindow("/v1/emails", "apollo_message_id", from, to, async (items) => {
     const rows: EmailRow[] = [];
     for (const raw of items) {

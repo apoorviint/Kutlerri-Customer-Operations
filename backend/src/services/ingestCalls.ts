@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "../db.js";
-import { agentKey, last10, mapDisposition } from "../rules/calls.js";
+import { agentKey, last10, mapDirection, mapDisposition, type Direction } from "../rules/calls.js";
 import { resolveCallZone, shiftDate, toUtc, type TzRule } from "../rules/time.js";
 import { fetchWindow } from "./callLogsApi.js";
 import type { Settings } from "./settings.js";
@@ -20,6 +20,11 @@ const CallItem = z.object({
   time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   disposition_code: str,
   synced_at: z.string().nullish(),
+  // The API does not send a direction today. When it does, it is read from whichever of these names it uses.
+  direction: str,
+  call_direction: str,
+  call_type: str,
+  type: str,
 });
 
 export type CallContext = {
@@ -45,6 +50,8 @@ export type CallRow = {
   dispositionRaw: string | null;
   dispositionKey: string | null;
   unknownDisposition: boolean;
+  direction: Direction | null;
+  unknownDirection: string | null; // the text we did not recognise
   providerSyncedAt: Date | null;
   raw: unknown;
 };
@@ -57,6 +64,8 @@ export function mapCall(raw: unknown, ctx: Pick<CallContext, "settings" | "rules
   const tzUsed = resolveCallZone(ctx.rules, { agentKey: key, lineNo10, localDate: r.date }, ctx.settings.callDefaultZone);
   const occurredAt = toUtc(r.date, r.time, tzUsed);
   const d = mapDisposition(r.disposition_code);
+  const rawDirection = r.direction ?? r.call_direction ?? r.call_type ?? r.type;
+  const dir = mapDirection(rawDirection);
   const synced = r.synced_at ? new Date(r.synced_at) : null;
   return {
     id: r.id,
@@ -75,6 +84,8 @@ export function mapCall(raw: unknown, ctx: Pick<CallContext, "settings" | "rules
     dispositionRaw: r.disposition_code,
     dispositionKey: d.key,
     unknownDisposition: d.unknown,
+    direction: dir.direction,
+    unknownDirection: dir.unknown ? rawDirection : null,
     providerSyncedAt: synced && !isNaN(synced.getTime()) ? synced : null,
     raw,
   };
@@ -97,25 +108,25 @@ export async function upsertCalls(rows: CallRow[], agentIds: Map<string, number>
   const values = unique.map((r) => Prisma.sql`(
     ${r.id}, ${r.contactNo10}, ${r.justcallNo10}, ${r.lineName}, ${r.agentKey ? (agentIds.get(r.agentKey) ?? null) : null}, ${r.recordingUrl},
     ${r.durationSec}, ${r.localDate}::date, ${r.localTime}, ${r.tzUsed}, ${r.occurredAt.toISOString()}::timestamptz AT TIME ZONE 'UTC', ${r.shiftDate}::date,
-    ${r.dispositionRaw}, ${r.dispositionKey}, ${r.providerSyncedAt?.toISOString() ?? null}::timestamptz AT TIME ZONE 'UTC', timezone('UTC', now()), timezone('UTC', now()), ${JSON.stringify(r.raw)}::jsonb)`);
+    ${r.dispositionRaw}, ${r.dispositionKey}, ${r.direction}, ${r.providerSyncedAt?.toISOString() ?? null}::timestamptz AT TIME ZONE 'UTC', timezone('UTC', now()), timezone('UTC', now()), ${JSON.stringify(r.raw)}::jsonb)`);
   const result = await db.$queryRaw<{ inserted: boolean }[]>`
     INSERT INTO calls (id, contact_no10, justcall_no10, line_name, agent_id, recording_url, duration_sec, local_date, local_time, tz_used,
-                       occurred_at, shift_date, disposition_raw, disposition_key, provider_synced_at, ingested_at, updated_at, raw)
+                       occurred_at, shift_date, disposition_raw, disposition_key, direction, provider_synced_at, ingested_at, updated_at, raw)
     VALUES ${Prisma.join(values)}
     ON CONFLICT (id) DO UPDATE SET
       contact_no10 = EXCLUDED.contact_no10, justcall_no10 = EXCLUDED.justcall_no10, line_name = EXCLUDED.line_name,
       agent_id = EXCLUDED.agent_id, recording_url = EXCLUDED.recording_url, duration_sec = EXCLUDED.duration_sec,
       local_date = EXCLUDED.local_date, local_time = EXCLUDED.local_time, tz_used = EXCLUDED.tz_used,
       occurred_at = EXCLUDED.occurred_at, shift_date = EXCLUDED.shift_date, disposition_raw = EXCLUDED.disposition_raw,
-      disposition_key = EXCLUDED.disposition_key, provider_synced_at = EXCLUDED.provider_synced_at,
+      disposition_key = EXCLUDED.disposition_key, direction = EXCLUDED.direction, provider_synced_at = EXCLUDED.provider_synced_at,
       raw = EXCLUDED.raw, updated_at = timezone('UTC', now())
     WHERE (calls.contact_no10, calls.justcall_no10, calls.line_name, calls.agent_id, calls.recording_url, calls.duration_sec,
            calls.local_date, calls.local_time, calls.tz_used, calls.occurred_at, calls.shift_date, calls.disposition_raw,
-           calls.disposition_key, calls.provider_synced_at, calls.raw)
+           calls.disposition_key, calls.direction, calls.provider_synced_at, calls.raw)
       IS DISTINCT FROM
           (EXCLUDED.contact_no10, EXCLUDED.justcall_no10, EXCLUDED.line_name, EXCLUDED.agent_id, EXCLUDED.recording_url,
            EXCLUDED.duration_sec, EXCLUDED.local_date, EXCLUDED.local_time, EXCLUDED.tz_used, EXCLUDED.occurred_at,
-           EXCLUDED.shift_date, EXCLUDED.disposition_raw, EXCLUDED.disposition_key, EXCLUDED.provider_synced_at, EXCLUDED.raw)
+           EXCLUDED.shift_date, EXCLUDED.disposition_raw, EXCLUDED.disposition_key, EXCLUDED.direction, EXCLUDED.provider_synced_at, EXCLUDED.raw)
     RETURNING (xmax = 0) AS inserted`;
   const inserted = result.filter((x) => x.inserted).length;
   return { inserted, updated: result.length - inserted, unchanged: unique.length - result.length };
@@ -124,12 +135,12 @@ export async function upsertCalls(rows: CallRow[], agentIds: Map<string, number>
 export type WindowResult = {
   fetched: number; inserted: number; updated: number; unchanged: number; skipped: number;
   distinct: number; total: number; passes: number;
-  unknownDispositions: Record<string, number>; errors: string[];
+  unknownDispositions: Record<string, number>; unknownDirections: Record<string, number>; errors: string[];
 };
 
 /** Reads one date window (the provider's own dates) from the API and stores it. Safe to run again and again. */
 export async function ingestCallsWindow(ctx: CallContext, from: string, to: string): Promise<WindowResult> {
-  const out: WindowResult = { fetched: 0, inserted: 0, updated: 0, unchanged: 0, skipped: 0, distinct: 0, total: 0, passes: 0, unknownDispositions: {}, errors: [] };
+  const out: WindowResult = { fetched: 0, inserted: 0, updated: 0, unchanged: 0, skipped: 0, distinct: 0, total: 0, passes: 0, unknownDispositions: {}, unknownDirections: {}, errors: [] };
   const w = await fetchWindow("/v1/calls", "id", from, to, async (items) => {
     const rows: CallRow[] = [];
     for (const raw of items) {
@@ -137,6 +148,7 @@ export async function ingestCallsWindow(ctx: CallContext, from: string, to: stri
       try {
         const row = mapCall(raw, ctx);
         if (row.unknownDisposition) out.unknownDispositions[row.dispositionRaw!] = (out.unknownDispositions[row.dispositionRaw!] ?? 0) + 1;
+        if (row.unknownDirection) out.unknownDirections[row.unknownDirection] = (out.unknownDirections[row.unknownDirection] ?? 0) + 1;
         rows.push(row);
       } catch (e) {
         out.skipped++;

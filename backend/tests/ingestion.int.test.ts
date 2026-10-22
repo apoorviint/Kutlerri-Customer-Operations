@@ -193,16 +193,44 @@ describe.skipIf(!HAS_DB)("calls", () => {
     );
     fake.calls = [
       callItem(1, { disposition_code: "Dispositions: MQL", duration: 120 }), // on Phoebe's listed line
-      callItem(2, { justcall_no: "18005550000" }), // a line the sheet does not list, dialed by Phoebe's agent: goes to her one client
+      callItem(2, { justcall_no: "18005550000" }), // a line the sheet does not list: not counted for a client
     ];
     await jobs.runJob("calls", { from: "2026-10-09", to: "2026-10-09" });
     const attribution = await db.callAttribution.findMany({ orderBy: { callId: "asc" } });
-    expect(attribution.map((a) => [a.callId, a.status, a.reason])).toEqual([["1", "CLIENT", "sheet"], ["2", "CLIENT", "agent-fallback"]]);
+    expect(attribution.map((a) => [a.callId, a.status, a.reason])).toEqual([["1", "CLIENT", "sheet"], ["2", "UNASSIGNED", "no-assignment"]]);
     const rollup = await db.dailyRollup.findMany();
-    expect(rollup).toHaveLength(2); // two lines, so two rows
-    expect(rollup.reduce((n, r) => n + r.calls, 0)).toBe(2);
-    expect(rollup.reduce((n, r) => n + r.dMql, 0)).toBe(1);
+    expect(rollup).toHaveLength(1);
+    expect(rollup[0]).toMatchObject({ calls: 1, dMql: 1 });
     expect(((await lastRun("calls")).details as any).attribution.attribution.scanned).toBeGreaterThanOrEqual(2);
+  });
+
+  it("only calls made from our side count: one the source calls inbound is kept out of the dashboards", async () => {
+    const assignments = await import("../src/services/assignments.js");
+    const sheet = await import("../src/rules/assignmentSheet.js");
+    await assignments.commitAssignments(
+      sheet.parseAssignmentSheet([["Week", "Representative", "Client", "Phone number"], ["2026-10-05", "Phoebe", "HotChi", "(773) 398-6668"]], { anchor: "2026-10-22" }),
+      { uploadedBy: "test" },
+    );
+    fake.calls = [
+      callItem(1, { direction: "outbound" }),
+      callItem(2, { direction: "inbound", time: "14:18:00" }),
+      callItem(3, { time: "14:19:00" }), // no direction given: counted as outbound (the API sends none today)
+      callItem(4, { direction: "sideways", time: "14:20:00" }), // not understood: counted as outbound, and reported
+      callItem(5, { type: "Incoming", time: "14:21:00" }), // the direction may arrive under another name
+    ];
+    await jobs.runJob("calls", { from: "2026-10-09", to: "2026-10-09" });
+    const rows = await db.$queryRaw<{ id: string; direction: string | null; status: string }[]>`
+      SELECT c.id, c.direction, a.status FROM calls c JOIN call_attribution a ON a.call_id = c.id ORDER BY c.id`;
+    expect(rows.map((r) => [r.id, r.direction, r.status])).toEqual([
+      ["1", "outbound", "CLIENT"], ["2", "inbound", "INBOUND"], ["3", null, "CLIENT"], ["4", null, "CLIENT"], ["5", "inbound", "INBOUND"],
+    ]);
+    expect((await db.dailyRollup.findMany()).reduce((n, r) => n + r.calls, 0)).toBe(3); // the two inbound calls are not counted
+    expect((await lastRun("calls")).error).toMatch(/sideways/);
+
+    // with the switch off, direction is ignored
+    await db.setting.update({ where: { key: "outboundOnly" }, data: { value: false } });
+    await jobs.runJob("attribute-calls");
+    expect((await db.dailyRollup.findMany()).reduce((n, r) => n + r.calls, 0)).toBe(5);
   });
 
   it("the same job never runs twice at once", async () => {

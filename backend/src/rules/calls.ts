@@ -54,6 +54,24 @@ export function mapDisposition(raw: string | null | undefined): { key: Dispositi
   return key ? { key, unknown: false } : { key: null, unknown: true };
 }
 
+export type Direction = "outbound" | "inbound";
+
+const OUTBOUND = new Set(["outbound", "outgoing", "out", "outbound call", "outgoing call"]);
+const INBOUND = new Set(["inbound", "incoming", "in", "inbound call", "incoming call", "missed", "missed call", "voicemail"]);
+
+/**
+ * Only calls made from our side (outbound) count. The call-logs API does not send a direction today, so this returns
+ * null for "not said"; once the API sends one, anything that is clearly inbound is kept out of the dashboards.
+ * An unfamiliar word is reported as unknown (null), not guessed.
+ */
+export function mapDirection(raw: unknown): { direction: Direction | null; unknown: boolean } {
+  if (raw == null || String(raw).trim() === "") return { direction: null, unknown: false };
+  const t = String(raw).trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (OUTBOUND.has(t)) return { direction: "outbound", unknown: false };
+  if (INBOUND.has(t)) return { direction: "inbound", unknown: false };
+  return { direction: null, unknown: true };
+}
+
 const connectSet = new Set<string>(CONNECT_KEYS);
 export const isConnect = (key: string | null) => key !== null && connectSet.has(key);
 export const isMeaningful = (key: string | null, durationSec: number) => isConnect(key) && durationSec > MEANINGFUL_SECONDS;

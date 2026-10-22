@@ -229,24 +229,26 @@ describe.skipIf(!HAS_DB)("which Representative a call belongs to", () => {
       await addCall("other-day", { phone: "9990009999", agent: "debrup ghosh", shift: "2026-10-14" });
       await addCall("excluded", { phone: "3464233909", agent: "debrup ghosh", shift: "2026-10-13" });
     };
-    it("go to the Representative's client for that day when it is clear", async () => {
+    const turnOn = () => db.setting.update({ where: { key: "agentFallback" }, data: { value: true } });
+    it("are left Unassigned by default (the decision taken: only lines on the sheet count)", async () => {
       await setup();
+      await attr.attributeCalls();
+      expect((await att("listed")).status).toBe("CLIENT");
+      expect(await att("unlisted")).toMatchObject({ status: "UNASSIGNED", reason: "no-assignment" });
+    });
+    it("go to the Representative's client for that day when the setting is turned on and it is clear", async () => {
+      await setup();
+      await turnOn();
       await attr.attributeCalls();
       expect(await att("unlisted")).toMatchObject({ status: "CLIENT", client: "Rasa", rep: "David", reason: "agent-fallback" });
       // on the 14th David dialed nothing listed, and the sheet gives him two customer clients: not guessed
       expect((await att("other-day")).status).toBe("UNASSIGNED");
     });
-    it("never for the lines that are meant to stay Unassigned", async () => {
+    it("never for the lines that are meant to stay Unassigned, even when the setting is on", async () => {
       await setup();
+      await turnOn();
       await attr.attributeCalls();
       expect((await att("excluded")).status).toBe("UNASSIGNED");
-    });
-    it("not at all when the setting is off", async () => {
-      await setup();
-      await db.setting.update({ where: { key: "agentFallback" }, data: { value: false } });
-      await attr.attributeCalls();
-      expect((await att("unlisted")).status).toBe("UNASSIGNED");
-      expect((await att("listed")).status).toBe("CLIENT");
     });
   });
 

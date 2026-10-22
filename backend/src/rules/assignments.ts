@@ -11,8 +11,11 @@ export type Assignment = {
   priority: number; // 1 = from an uploaded sheet, 0 = a standing fallback
 };
 
-export type AttributionStatus = "CLIENT" | "INTERNAL" | "UNASSIGNED" | "CONFLICT";
-export type AttributionReason = "sheet" | "fallback" | "shared-line-by-agent" | "agent-fallback" | "no-assignment" | "ambiguous";
+export type AttributionStatus = "CLIENT" | "INTERNAL" | "UNASSIGNED" | "CONFLICT" | "INBOUND";
+export type AttributionReason = "sheet" | "fallback" | "shared-line-by-agent" | "agent-fallback" | "no-assignment" | "ambiguous" | "inbound";
+
+/** A call the source says is inbound: not one of ours, so it belongs to no client and is never counted. */
+export const INBOUND: Attribution = { status: "INBOUND", clientId: null, representativeId: null, assignmentId: null, reason: "inbound" };
 
 export type Attribution = {
   status: AttributionStatus;

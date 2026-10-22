@@ -60,12 +60,15 @@ Who-dialed-for-whom assignments and attribution, daily rollups, billing, prospec
 1. The call's phone line and **shift day** find the assignment (most specific period wins).
 2. A line listed for two Representatives in the same period is decided by the call's **agent**. If the agent is neither (or has no Representative) the call is flagged **Undecided**, not guessed.
 3. A line assigned to Kutlerri is **Internal**. A line with no assignment is **Unassigned**. Both are stored and never shown in the three views.
-4. **Agent fallback (a decision for you).** For a call on a line that is *not* on the sheet for that day, the prototype counts it for the agent's Representative's client when that is clear, and the prototype's numbers depend on it (the written spec says such a call is simply Unassigned). The rule, which reproduces every one of the prototype's 49,971 client calls with the same client and Representative:
+4. **A call on a line that is not on the sheet is left out (decision taken: "B").** It has no client, shows up as "no client yet" on the status page, and is not counted. The prototype counted such calls for the agent's Representative when that was clear (2,569 of its 49,971 client calls), so **the totals here are lower than the prototype's by that many, on purpose**. The sheet is meant to list every line each day, so this should stop happening.
+
+   The prototype's rule is still in the code as the setting `agentFallback` (default **off**), in case it is wanted again. With it on, every one of the prototype's 49,971 client calls matched with the same client and Representative:
    - if the Representative dialed from listed lines of exactly one client that same shift day, that client;
    - otherwise, if the sheet gives them exactly one customer client (Kutlerri's own lines ignored), that client;
    - otherwise Unassigned.
 
-   It is the setting `agentFallback` (on by default so the numbers match the prototype). Dave's (346) 423-3909 and (682) 356-3013 are listed in `agentFallbackExcludedLines` so they stay Unassigned, as the prompt says. The status page reports how many calls were counted this way (2,640 so far) and on which lines, so the sheet can be completed.
+   Dave's (346) 423-3909 and (682) 356-3013 are in `agentFallbackExcludedLines`, so they stay Unassigned even with the rule on, as the prompt says.
+5. **Only outbound calls count (decision taken).** The call-logs API **sends no direction** (and ignores a direction filter), so inbound calls cannot be told apart yet and **every call is counted as outbound**; the status page says so. As soon as the API sends a direction (read from `direction`, `call_direction`, `call_type` or `type`; "inbound", "incoming" or "missed" mean inbound), inbound calls get the status `INBOUND`, belong to no client and are never counted (setting `outboundOnly`, default on). A direction word we do not recognise is counted as outbound and reported on the sync run. **Open: the API owner needs to add the field** (see the Phase 2 report).
 
 ## Daily counts
 `daily_rollups` holds, per shift day, client, Representative, agent and line: calls, meaningful conversations (a connect longer than 90 seconds), MQLs over 90 seconds, and a count per disposition (plus "no disposition" and "unrecognised text"). Only calls that belong to a client are counted. They are rebuilt for the affected days after every calls sync, after an upload or rollback, and after a time rule changes.
@@ -73,17 +76,19 @@ Who-dialed-for-whom assignments and attribution, daily rollups, billing, prospec
 ## Acceptance results (shift days 2026-08-17 to 2026-10-09, client lines)
 Run with `npx tsx src/scripts/acceptance.ts "<prototype HTML>"`.
 
-| | Prompt | Counting only calls the workbook also has | Everything the API has |
-|---|---|---|---|
-| Total dials | 49,971 | **49,971** | 50,944 (+973) |
-| Dials per client (all six) and the Sep 10 shift (274) | | **exact** | higher by the extra calls |
-| Connects | 4,160 | 4,168 (+8) | 4,242 |
-| Meaningful conversations | 1,538 | 1,541 (+3) | 1,563 |
-| MQLs (over 90 s / 90 s or less) | 1,023 (828 / 195) | 1,024 (829 / 195) | 1,039 |
+The current defaults (`agentFallback` off, as decided):
 
-Every one of the prototype's 49,971 client calls is in the data with the **same client and the same Representative**. The differences are two data differences, not rule differences:
+| | Prompt | Calls the workbook also has | Everything the API has |
+|---|---|---|---|
+| Total dials | 49,971 | 47,402 (-2,569) | 48,304 |
+| Dials: Kati Roll (3,527), Eight Turn Crepe (2,394) and the Sep 10 shift (274) | | **exact** | |
+| Dials: Rasa / Cedar's / Gyro Republic / HotChi | 16,835 / 10,028 / 8,619 / 8,568 | 15,060 / 9,630 / 8,490 / 8,301 | |
+
+The 2,569 are the calls the prototype counted through the fallback rule, which is now off by decision. For reference, **with the rule on** the same table matched the prototype exactly: total 49,971, all six clients and the Sep 10 shift; connects 4,168 (+8), meaningful 1,541 (+3), MQLs 1,024 (+1).
+
+With the rule on, every one of the prototype's 49,971 client calls is in the data with the **same client and the same Representative**, so the attribution rules themselves reproduce the prototype. The remaining differences are data, not rules:
 1. **+8 connects, +3 meaningful, +1 MQL:** 13 calls received a disposition after the prototype's 13 Oct snapshot (8 became connects). The API holds the newer values.
-2. **+973 calls (1.9%) that are in the API but not in the workbook.** 83% last 0 seconds, and 83% were to a contact the same line had already called in the previous 14 days (40% for ordinary calls), which is what call-backs from prospects look like. **The API has no direction field**, so inbound or missed calls cannot be told apart from outbound ones, and the prompt says only outbound calls count. **This needs a decision**; no filter was guessed.
+2. **About 900 calls (1.9%) that are in the API but not in the workbook, on lines the sheet lists.** 83% last 0 seconds, and 83% were to a contact the same line had already called in the previous 14 days (40% for ordinary calls), which is what call-backs from prospects look like, so they are probably inbound. They are counted until the API sends a direction (see item 5 above).
 
 ## Known sheet issues, as expected
 - **Andrew's two numbers swap clients** between the weeks of Sep 21 and Sep 28 (…2756 and …9521). Imported as written; reported when the sheet is previewed.

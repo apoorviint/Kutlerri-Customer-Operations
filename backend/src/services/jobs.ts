@@ -54,6 +54,7 @@ async function walkDays(
   const totals = zero();
   const warnings: string[] = [];
   const unknown: Record<string, number> = {};
+  const unknownDirections: Record<string, number> = {};
   let passesOver1 = 0;
   const days: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
@@ -65,10 +66,12 @@ async function walkDays(
     if (w.distinct < w.total) warnings.push(`${day}: received ${w.distinct} of ${w.total} rows even after retrying`);
     if (w.skipped) warnings.push(`${day}: ${w.skipped} rows could not be read (${w.errors[0] ?? "unknown reason"})`);
     for (const [k, n] of Object.entries(w.unknownDispositions)) unknown[k] = (unknown[k] ?? 0) + n;
+    for (const [k, n] of Object.entries(w.unknownDirections)) unknownDirections[k] = (unknownDirections[k] ?? 0) + n;
     await touchLock(name);
     await db.syncRun.update({ where: { id: runId }, data: { ...totals, details: { lastCompletedDay: day, daysDone: i + 1, daysTotal: days.length } } });
   }
   if (Object.keys(unknown).length) warnings.push(`Unrecognised dispositions kept as "no disposition": ${JSON.stringify(unknown)}`);
+  if (Object.keys(unknownDirections).length) warnings.push(`Unrecognised call directions (treated as outbound): ${JSON.stringify(unknownDirections)}`);
   return { totals, warnings: warnings.slice(0, 20), details: { daysTotal: days.length, daysWithRetries: passesOver1, unknownDispositions: unknown }, from, to, kind: "" };
 }
 

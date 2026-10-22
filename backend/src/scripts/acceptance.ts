@@ -9,6 +9,7 @@
 import { readFileSync } from "node:fs";
 import { db } from "../db.js";
 import { CONNECT_KEYS, isConnect, isMeaningful, isMqlOver90, last10 } from "../rules/calls.js";
+import { loadSettings } from "../services/settings.js";
 
 const FROM = "2026-08-17", TO = "2026-10-09";
 
@@ -116,7 +117,14 @@ async function main() {
   const html = process.argv[2];
   if (html) {
     const seed = JSON.parse(readFileSync(html, "utf8").match(/<script type="application\/json" id="seed-data">([\s\S]*?)<\/script>/)![1]) as Seed;
-    bad += table("2. Counting only the calls the prototype's workbook also contains", await onlyInWorkbook(seed));
+    const both = await onlyInWorkbook(seed);
+    bad += table("2. Counting only the calls the prototype's workbook also contains", both);
+    const settings = await loadSettings();
+    console.log(
+      settings.agentFallback
+        ? "\nNote: agentFallback is ON, so a call on a line that is not on the sheet is counted for the agent's Representative, as the prototype does."
+        : `\nNote: agentFallback is OFF (the decision taken). A call on a line that is not on the sheet is left out, so table 2 is lower than the prototype's by design: ${EXPECTED.dials - both.dials} of its ${EXPECTED.dials} calls were counted by the prototype through that rule.`,
+    );
     compareWithPrototype(seed, rows);
   }
   await db.$disconnect();
