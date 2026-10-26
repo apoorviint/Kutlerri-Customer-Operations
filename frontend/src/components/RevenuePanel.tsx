@@ -9,7 +9,7 @@ import { Async, Dot } from "./ui";
 
 type Cell = Revenue["totals"][number];
 
-/** Revenue by week, counted by order date: one column per week, one row per Representative or client, hover for who it came from. */
+/** Revenue by week, counted by the order's created date: one column per week, one row per Representative or client, hover for who it came from. */
 export default function RevenuePanel({ by }: { by: "rep" | "client" }) {
   const { qs } = useFilters();
   const state = useApi<Revenue>(`/revenue/weekly?by=${by}&${qs}`);

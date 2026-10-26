@@ -50,7 +50,9 @@ export const fmtTalk = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).pa
 
 // ── call timing: minutes after midnight of the shift day, IST (a time past 1440 is the next morning) ──
 export const clock = (m: number) => { const r = Math.round(m); const h = Math.floor(r / 60) % 24; return `${((h + 11) % 12) + 1}:${String(r % 60).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`; };
-export const dur = (m: number) => { const r = Math.round(m); return r >= 60 ? `${Math.floor(r / 60)}h ${String(r % 60).padStart(2, "0")}m` : `${r}m`; };
+/** A client or Representative name compared loosely: case, apostrophes, punctuation and a leading "The" do not matter ("Cedar's" = "Cedars"). */
+export const nameKey = (s: string) => s.toLowerCase().replace(/['’‘`´]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/^the /, "");
+export const dur =(m: number) => { const r = Math.round(m); return r >= 60 ? `${Math.floor(r / 60)}h ${String(r % 60).padStart(2, "0")}m` : `${r}m`; };
 export const tick = (h: number) => `${((h % 24) + 11) % 12 + 1} ${h % 24 >= 12 ? "PM" : "AM"}`;
 /** "on time", "12m late", "8m early" (within the grace it is on time) */
 export const when = (delta: number, grace: number) => (Math.abs(delta) <= grace ? "on time" : `${Math.round(Math.abs(delta))}m ${delta > 0 ? "late" : "early"}`);

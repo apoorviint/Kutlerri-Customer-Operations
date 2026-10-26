@@ -150,7 +150,8 @@ function Schedules({ m, reload }: { m: M; reload: () => void }) {
 
   async function save() {
     setSaved(null);
-    const lines = excluded.split(/[\s,;]+/).map((x) => x.replace(/\D/g, "")).filter(Boolean);
+    // "(570) 456-3531", "570-456-3531" and "15704563531" are the same line: its last ten digits
+    const lines = excluded.split(/[,;\n]+/).map((x) => x.replace(/\D/g, "").slice(-10)).filter(Boolean);
     const r = await act.run(() => api<{ changed: string[] }>("/admin/settings", { method: "PUT", ...json({ timing: t, agentFallback: fallback, agentFallbackExcludedLines: lines, backfillStart: start }) }));
     if (r) { setSaved(r.changed.length ? `Saved: ${r.changed.join(", ")}.` : "Nothing changed."); reload(); }
   }

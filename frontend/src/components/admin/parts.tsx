@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
+import { nameKey } from "@/lib/format";
 
 /** Small pieces every admin screen uses. */
 
@@ -93,12 +94,12 @@ export function ClientPicker({ clients, value, onChange, onAdded, label = "Clien
   const [text, setText] = useState(selected?.name ?? "");
   useEffect(() => { if (selected) setText(selected.name); }, [selected]);
   const typed = text.trim().replace(/\s+/g, " ");
-  const match = clients.find((c) => c.name.toLowerCase() === typed.toLowerCase());
+  const match = clients.find((c) => nameKey(c.name) === nameKey(typed));
 
   function type(v: string) {
     setText(v);
     act.clear();
-    const m = clients.find((c) => c.name.toLowerCase() === v.trim().replace(/\s+/g, " ").toLowerCase());
+    const m = clients.find((c) => nameKey(c.name) === nameKey(v));
     onChange(m ? m.id : null);
   }
   async function add() {

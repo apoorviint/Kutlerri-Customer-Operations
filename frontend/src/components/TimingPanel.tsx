@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { addDays, clock, dayName, dur, fShort, hhmm, isoWeek, n0, tick, when } from "@/lib/format";
+import { addDays, clock, dayName, dur, fShort, hhmm, isoWeek, n0, nameKey, tick, when } from "@/lib/format";
 import { useFilters } from "@/lib/filters";
 import { useApi } from "@/lib/hooks";
 import type { RepDay, TimingDay, TimingDays, TimingSettings, TimingWeek } from "@/lib/types";
@@ -9,6 +9,10 @@ import { Async } from "./ui";
 
 type Mode = "day" | "week";
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Calls a Representative should make in a shift day: 150 for these, 200 for everyone else. */
+const TARGET_150 = new Set(["Andrew", "Steven", "Dave", "Armaan", "Arman", "Albert", "Rohit"].map(nameKey));
+const targetOf = (name: string) => (TARGET_150.has(nameKey(name)) ? 150 : 200);
 
 /**
  * Call timing and breaks. Daily: every Representative who dialed on one shift day, on a shared clock.
@@ -66,7 +70,9 @@ const Legend = () => (
   <div className="tm-legend">
     <span><i style={{ background: "var(--primary)" }} />Calling</span>
     <span><i style={{ background: "color-mix(in srgb,var(--muted) 14%,transparent)" }} />Scheduled break</span>
-    <span><i style={{ background: "rgba(245,158,11,.20)", border: "1px solid rgba(245,158,11,.6)" }} />Actual break</span>
+    <span><i style={{ background: "rgba(245,158,11,.20)", border: "1px solid rgba(245,158,11,.6)" }} />Break over the allowed time</span>
+    <span><b className="tm-tgt ok">✓</b>Daily call target met</span>
+    <span><b className="tm-tgt miss">✗</b>Daily call target missed</span>
   </div>
 );
 
@@ -83,19 +89,24 @@ function Ticks({ lo, hrs }: { lo: number; hrs: number }) {
 
 function Track({ d, lo, hi, hrs, label, className }: { d: RepDay; lo: number; hi: number; hrs: number; label: string; className?: string }) {
   const pc = (t: number) => (((t - lo) / (hi - lo)) * 100).toFixed(2);
-  const s = d.schedule;
+  const s = d.schedule, allowed = s.breakEnd - s.breakStart, target = targetOf(d.name);
+  // only the time past the allowed break is drawn, at the end of the break
+  const over = d.main ? d.main.len - allowed : 0;
   return (
     <div className={`tm-track ${className ?? ""}`} style={{ ["--h" as string]: hrs }}>
       <div className="tm-win" style={{ left: `${pc(s.breakStart)}%`, width: `${((s.breakEnd - s.breakStart) / (hi - lo)) * 100}%` }} title={`Scheduled break ${clock(s.breakStart)} – ${clock(s.breakEnd)}`} />
-      {d.main && (
-        <div className="tm-gap" style={{ left: `${pc(d.main.from)}%`, width: `${(d.main.len / (hi - lo)) * 100}%` }} title={`${label}break ${clock(d.main.from)} – ${clock(d.main.to)} (${dur(d.main.len)})`}>
-          {d.main.len / (hi - lo) > 0.075 && <span>{dur(d.main.len)}</span>}
+      {d.main && over > 0 && (
+        <div className="tm-gap" style={{ left: `${pc(d.main.to - over)}%`, width: `${(over / (hi - lo)) * 100}%` }} title={`${label}break ${clock(d.main.from)} – ${clock(d.main.to)} (${dur(d.main.len)}), ${dur(over)} over the ${allowed}m allowed`}>
+          {over / (hi - lo) > 0.075 && <span>{dur(over)}</span>}
         </div>
       )}
       {d.blocks.map((b, i) => (
         <div key={i} className="tm-blk" style={{ left: `${pc(b.s)}%`, width: `${Math.max(0, ((b.e - b.s) / (hi - lo)) * 100)}%` }}
           title={`${label}${clock(b.s)} – ${clock(b.e)} · ${d.clients.find((c) => c.id === b.clientId)?.name ?? ""} · ${b.n} call${b.n === 1 ? "" : "s"}`} />
       ))}
+      <b className={`tm-tgt ${d.calls >= target ? "ok" : "miss"}`} title={`${label}${n0(d.calls)} calls, daily target ${target}: ${d.calls >= target ? "met" : "missed"}`}>
+        {d.calls >= target ? "✓" : "✗"} {n0(d.calls)}/{target}
+      </b>
     </div>
   );
 }
@@ -121,19 +132,15 @@ function TimingRow({ d, grace, nameCell, clientsCell }: { d: RepDay; grace: numb
           <td>{n0(m.before)}</td><td>{n0(m.after)}</td>
         </>
       ) : <>{dash}{dash}{dash}{dash}{dash}</>}
-      {d.other.length ? (
-        <td title={d.other.map((g) => `${clock(g.from)} – ${clock(g.to)} (${dur(g.len)})`).join("\n")}>{d.other.length}<small>{dur(d.other.reduce((n, g) => n + g.len, 0))} total</small></td>
-      ) : dash}
     </tr>
   );
 }
 
-const Head = ({ first, gap }: { first: string; gap: number }) => (
+const Head = ({ first }: { first: string }) => (
   <thead>
     <tr>
       <th className="left">{first}</th><th className="left">Client</th><th>Calls</th><th>First call</th><th>Last call</th>
       <th>Break starts</th><th>Back on calls</th><th>Break length</th><th>Before break</th><th>After break</th>
-      <th title={`Other pauses of ${gap} minutes or more`}>Other pauses</th>
     </tr>
   </thead>
 );
@@ -172,7 +179,7 @@ function DayView({ controls, list, day, setDay }: { controls: React.ReactNode; l
               <Legend />
               <div className="tablewrap">
                 <table>
-                  <Head first="Name" gap={t.settings.gapMinutes} />
+                  <Head first="Name" />
                   <tbody>{t.reps.map((d) => <TimingRow key={d.representativeId} d={d} grace={g} nameCell={d.name} clientsCell={clientsOf(d)} />)}</tbody>
                 </table>
               </div>
@@ -224,12 +231,12 @@ function WeekView({ controls, weeks, week, setWeek, reps, repId, setRepId }: {
               <Legend />
               <div className="tablewrap">
                 <table>
-                  <Head first="Day" gap={t.settings.gapMinutes} />
+                  <Head first="Day" />
                   <tbody>
                     {t.days.map(({ date, day }) => (
                       <Fragment key={date}>
                         {day ? <TimingRow d={day} grace={g} nameCell={dayName(date)} clientsCell={clientsOf(day)} />
-                          : <tr><td className="name">{dayName(date)}</td><td className="na" colSpan={10}>Did not dial</td></tr>}
+                          : <tr><td className="name">{dayName(date)}</td><td className="na" colSpan={9}>Did not dial</td></tr>}
                       </Fragment>
                     ))}
                   </tbody>

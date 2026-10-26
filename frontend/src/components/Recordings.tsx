@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, fShort, fmtPhone, fmtTalk, n0 } from "@/lib/format";
+import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, fShort, fmtPhone, fmtTalk, n0, nameKey } from "@/lib/format";
 import { useFilters } from "@/lib/filters";
 import { useApi } from "@/lib/hooks";
 import type { DispositionKey, Prospect, Recording, Recordings as Data } from "@/lib/types";
@@ -44,7 +44,7 @@ export default function Recordings({ kind, id, filterIds }: { kind: "rep" | "cli
   const filter = filterIds.length ? `&${kind === "rep" ? "clients" : "reps"}=${filterKey}` : "";
   const path = `${base}/recordings?${qs}${filter}&limit=${limit}${dq ? `&q=${encodeURIComponent(dq)}` : ""}${category ? `&category=${category}` : ""}${category && sub ? `&sub=${sub}` : ""}`;
   const state = useApi<Data>(path);
-  const showPhone = (name: string) => meta.clients.find((c) => c.name === name)?.showPhone ?? false;
+  const showPhone = (name: string) => meta.clients.find((c) => nameKey(c.name) === nameKey(name))?.showPhone ?? false;
 
   const pick = (c: "answered" | "not_answered") => { setCategory(category === c ? null : c); setSub(null); };
   const cat = category === "answered" ? ANSWERED_KEYS : NOT_ANSWERED_KEYS;

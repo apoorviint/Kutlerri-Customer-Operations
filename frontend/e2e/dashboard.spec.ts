@@ -31,7 +31,7 @@ test("the Overview opens first, with revenue, calls, emails and a row per client
   await page.getByLabel("To", { exact: true }).fill("2026-10-09");
   await expect(page.getByText("$2,840.86").first()).toBeVisible();
   await expect(page.getByText("$568.17").first()).toBeVisible();
-  await expect(page.getByText("8 orders · by order date")).toBeVisible();
+  await expect(page.getByText("8 orders · by order created date")).toBeVisible();
   await expect(page.getByTestId("billing-last-upload")).toContainText("Billing sheet last uploaded:");
   await expect(page.getByText(/of 6 clients · with calls, orders or emails/)).toBeVisible();
   // only Rasa has email data so far, and the page says so rather than showing six clients of zeros as if it were complete

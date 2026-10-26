@@ -36,7 +36,7 @@ export default function OverviewView() {
                   <div className="ov-top"><Metric lead k="Active clients" v={n0(o.activeClients.count)} n={`of ${o.activeClients.of} clients · with calls, orders or emails in these dates`} /></div>
 
                   <Section title="Revenue" cls="ov-rev">
-                    <Metric lead k="Total revenue" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order date`} />
+                    <Metric lead k="Total revenue" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
