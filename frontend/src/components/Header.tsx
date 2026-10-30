@@ -20,6 +20,7 @@ export default function Header() {
 
   return (
     <header className="top">
+      <img className="logo" src="/kutlerri-logo.png" alt="Kutlerri.ai" width={171} height={34} />
       <h1 className="title">Customer Success Operations Dashboard</h1>
       <div className="datefilter" role="group" aria-label="Date range">
         <span className="name">DATE RANGE</span>

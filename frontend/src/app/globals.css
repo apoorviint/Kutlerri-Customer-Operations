@@ -35,6 +35,7 @@ button,input,select{font:inherit;color:inherit}
   padding:calc(18px + env(safe-area-inset-top,0px)) 40px 18px;
   display:flex;align-items:center;gap:28px;flex-wrap:wrap;
 }
+.logo{display:block;height:34px;width:auto}
 .title{margin:0;font:700 24px/1.2 var(--font-ui);letter-spacing:-.005em}
 .datefilter{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .datefilter .name{font:700 12px/1 var(--font-ui);letter-spacing:.08em;color:var(--subtle)}
