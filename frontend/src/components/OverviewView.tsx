@@ -37,7 +37,7 @@ export default function OverviewView() {
 
                   <Section title="Revenue" cls="ov-rev">
                     <Metric lead k="Order Value / Total Revenue" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
-                    <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Subtotal, per client" />
+                    <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Item Total, per client" />
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />

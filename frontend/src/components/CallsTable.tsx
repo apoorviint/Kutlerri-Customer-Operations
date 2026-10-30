@@ -29,7 +29,7 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
       <td>{n0(s.connects)} <span className="pct">({pct(s.connects, s.calls)})</span></td>
       <td>{n0(s.meaningful)} <span className="pct">({pct(s.meaningful, s.connects)})</span></td>
       <td>{n0(s.answered)}</td>
-      <td>{n0(s.mql)}</td>
+      <td>{n0(s.mql)} <span className="pct">({pct(s.mql, s.connects)})</span></td>
       {open.answered && ANSWERED_KEYS.map((k) => <td key={k} className="sa">{n0(s.dispositions[k])}</td>)}
       <td>{n0(s.notAnswered)}</td>
       {open.not_answered && NOT_ANSWERED_KEYS.map((k) => <td key={k} className="sn">{n0(s.dispositions[k])}</td>)}
@@ -66,8 +66,8 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
             {groupHead("answered", "Answered", ANSWERED_KEYS)}
             <th>MQL</th>
             {groupHead("not_answered", "Not answered", NOT_ANSWERED_KEYS)}
-            <th title="Subtotal of the orders created in these dates">Order Value / Total Revenue</th>
-            <th title="Kutlerri's share of the Subtotal, at each client's rate">Kutlerri's Revenue</th>
+            <th title="Item Total of the orders created in these dates">Order Value / Total Revenue</th>
+            <th title="Kutlerri's share of the Item Total, at each client's rate">Kutlerri's Revenue</th>
           </tr>
         </thead>
         <tbody>
