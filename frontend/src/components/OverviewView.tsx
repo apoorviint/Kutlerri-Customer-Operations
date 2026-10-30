@@ -36,7 +36,8 @@ export default function OverviewView() {
                   <div className="ov-top"><Metric lead k="Active clients" v={n0(o.activeClients.count)} n={`of ${o.activeClients.of} clients · with calls, orders or emails in these dates`} /></div>
 
                   <Section title="Revenue" cls="ov-rev">
-                    <Metric lead k="Total revenue" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
+                    <Metric lead k="Order Value / Total Revenue" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
+                    <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Subtotal, per client" />
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
@@ -45,10 +46,10 @@ export default function OverviewView() {
 
                   <Section title="Calls" cls="ov-call">
                     <Metric lead k="Total dials" v={n0(c.dials)} />
-                    <Metric k="Connects" v={n0(c.connects)} n={`${pct(c.connects, c.dials)} of dials`} />
+                    <Metric k="Connects/Answered" v={n0(c.connects)} n={`${pct(c.connects, c.dials)} of dials`} />
                     <Metric k="Meaningful conversations" v={n0(c.meaningful)} n={`${pct(c.meaningful, c.connects)} of connects · over 90 seconds`} />
                     <Metric k="MQLs" v={n0(c.mql)} n={<>Over 90 sec <b>{n0(c.mqlOver90)}</b> · 90 sec or less <b>{n0(c.mqlUnder90)}</b></>} />
-                    <Metric k="Answered" v={n0(c.answered)} n={`${pct(c.answered, c.dials)} of dials`} />
+                    <Metric k="MQL %" v={pct(c.mql, c.connects)} n="of connects" />
                     <Metric k="Not answered" v={n0(c.notAnswered)} n={`${pct(c.notAnswered, c.dials)} of dials`} />
                   </Section>
 
@@ -65,21 +66,21 @@ export default function OverviewView() {
                     <h3 className="ov-h"><i />By client</h3>
                     <div className="panel"><div className="tablewrap">
                       <table>
-                        <thead><tr><th className="left">Client</th><th>Dials</th><th>Connects</th><th>Meaningful conversations</th><th>MQLs</th><th>Orders</th><th>Revenue</th><th>Emails sent</th><th>Opened</th><th>Replied</th></tr></thead>
+                        <thead><tr><th className="left">Client</th><th>Dials</th><th>Connects</th><th>Meaningful conversations</th><th>MQLs</th><th>Orders</th><th>Order Value / Total Revenue</th><th>Kutlerri's Revenue</th><th>Emails sent</th><th>Delivered</th><th>Opened</th><th>Replied</th></tr></thead>
                         <tbody>
                           {o.byClient.map((x) => (
                             <tr key={x.clientId}>
                               <td className="name"><Dot color={colorOf(x.name)} />{x.name}</td>
                               <td>{n0(x.dials)}</td><td>{n0(x.connects)}</td><td>{n0(x.meaningful)}</td><td>{n0(x.mqls)}</td>
-                              <td>{n0(x.orders)}</td><td>{x.orders ? usd(x.revenue) : <span className="na">–</span>}</td>
-                              <td>{n0(x.emailsSent)}</td><td>{n0(x.opened)}</td><td>{n0(x.replied)}</td>
+                              <td>{n0(x.orders)}</td><td>{x.orders ? usd(x.revenue) : <span className="na">–</span>}</td><td>{x.orders ? usd(x.kutlerriRevenue) : <span className="na">–</span>}</td>
+                              <td>{n0(x.emailsSent)}</td><td>{n0(x.delivered)}</td><td>{n0(x.opened)} <span className="pct">({pct(x.opened, x.emailsSent)})</span></td><td>{n0(x.replied)}</td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot>
                           <tr>
                             <td className="name">Total</td><td>{n0(c.dials)}</td><td>{n0(c.connects)}</td><td>{n0(c.meaningful)}</td><td>{n0(c.mql)}</td>
-                            <td>{n0(r.orders)}</td><td>{r.orders ? usd(r.total) : "–"}</td><td>{n0(e.sent)}</td><td>{n0(e.opened)}</td><td>{n0(e.replied)}</td>
+                            <td>{n0(r.orders)}</td><td>{r.orders ? usd(r.total) : "–"}</td><td>{r.orders ? usd(r.kutlerri) : "–"}</td><td>{n0(e.sent)}</td><td>{n0(e.delivered)}</td><td>{n0(e.opened)} <span className="pct">({pct(e.opened, e.sent)})</span></td><td>{n0(e.replied)}</td>
                           </tr>
                         </tfoot>
                       </table>

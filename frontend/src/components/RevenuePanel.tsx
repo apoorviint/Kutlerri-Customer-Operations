@@ -22,14 +22,14 @@ export default function RevenuePanel({ by }: { by: "rep" | "client" }) {
   return (
     <section className="panel" id={`rv-${by}`}>
       <header className="rv-head">
-        <h3>Revenue</h3>
+        <h3>Order Value / Total Revenue</h3>
         {s?.runRate != null && <span className="rv-run">Weekly run rate <b>{usd(s.runRate)}</b></span>}
       </header>
       <Async state={state}>
         {(r) => (
           <>
             <div className="tm-sum">
-              <span>Revenue <b>{usd(r.summary.revenue)}</b></span>
+              <span>Order Value / Total Revenue <b>{usd(r.summary.revenue)}</b></span>
               <span>Orders <b>{n0(r.summary.orders)}</b></span>
               <span>Avg order <b>{r.summary.avgOrder != null ? usd(r.summary.avgOrder) : "–"}</b></span>
               <span>Representatives with orders <b>{r.summary.groupsWithOrders}</b></span>

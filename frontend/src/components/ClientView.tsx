@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { colorOf, fShort, n0 } from "@/lib/format";
+import { colorOf, fShort, n0, pct } from "@/lib/format";
 import { useFilters } from "@/lib/filters";
 import { useApi } from "@/lib/hooks";
 import type { ClientTable, Overview } from "@/lib/types";
@@ -24,16 +24,16 @@ function EmailsPanel() {
           return (
             <div className="tablewrap">
               <table>
-                <thead><tr><th className="left">Client</th><th>Emails sent</th><th>Opened</th><th>Replied</th></tr></thead>
+                <thead><tr><th className="left">Client</th><th>Emails sent</th><th>Delivered</th><th>Bounced</th><th>Opened</th><th>Open %</th><th>Replied</th></tr></thead>
                 <tbody>
                   {rows.map((x) => (
                     <tr key={x.clientId}>
                       <td className="name"><Dot color={colorOf(x.name)} />{x.name}</td>
-                      <td>{n0(x.emailsSent)}</td><td>{n0(x.opened)}</td><td>{n0(x.replied)}</td>
+                      <td>{n0(x.emailsSent)}</td><td>{n0(x.delivered)}</td><td>{n0(x.bounced)}</td><td>{n0(x.opened)}</td><td>{pct(x.opened, x.emailsSent)}</td><td>{n0(x.replied)}</td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr><td className="name">Total</td><td>{n0(o.emails.sent)}</td><td>{n0(o.emails.opened)}</td><td>{n0(o.emails.replied)}</td></tr></tfoot>
+                <tfoot><tr><td className="name">Total</td><td>{n0(o.emails.sent)}</td><td>{n0(o.emails.delivered)}</td><td>{n0(o.emails.bounced)}</td><td>{n0(o.emails.opened)}</td><td>{pct(o.emails.opened, o.emails.sent)}</td><td>{n0(o.emails.replied)}</td></tr></tfoot>
               </table>
             </div>
           );

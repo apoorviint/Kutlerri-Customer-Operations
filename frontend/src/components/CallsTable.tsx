@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, n0, pct } from "@/lib/format";
+import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, n0, pct, usd } from "@/lib/format";
 import type { Node, Stats } from "@/lib/types";
 import { Chevron, Dot } from "./ui";
 
@@ -29,9 +29,12 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
       <td>{n0(s.connects)} <span className="pct">({pct(s.connects, s.calls)})</span></td>
       <td>{n0(s.meaningful)} <span className="pct">({pct(s.meaningful, s.connects)})</span></td>
       <td>{n0(s.answered)}</td>
+      <td>{n0(s.mql)}</td>
       {open.answered && ANSWERED_KEYS.map((k) => <td key={k} className="sa">{n0(s.dispositions[k])}</td>)}
       <td>{n0(s.notAnswered)}</td>
       {open.not_answered && NOT_ANSWERED_KEYS.map((k) => <td key={k} className="sn">{n0(s.dispositions[k])}</td>)}
+      <td>{s.revenue ? usd(s.revenue) : <span className="na">–</span>}</td>
+      <td>{s.kutlerriRevenue ? usd(s.kutlerriRevenue) : <span className="na">–</span>}</td>
     </>
   );
   const sortHead = (k: Exclude<Sort, null>, label: string, tip: string) => (
@@ -61,7 +64,10 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
             {sortHead("connects", "Connects", "Calls with one of the connect dispositions. Click to sort high to low.")}
             {sortHead("meaningful", "Meaningful conversations", `Connected calls with talk time over ${meaningfulSeconds} seconds. Click to sort high to low.`)}
             {groupHead("answered", "Answered", ANSWERED_KEYS)}
+            <th>MQL</th>
             {groupHead("not_answered", "Not answered", NOT_ANSWERED_KEYS)}
+            <th title="Subtotal of the orders created in these dates">Order Value / Total Revenue</th>
+            <th title="Kutlerri's share of the Subtotal, at each client's rate">Kutlerri's Revenue</th>
           </tr>
         </thead>
         <tbody>

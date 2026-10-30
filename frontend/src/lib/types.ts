@@ -6,7 +6,7 @@ export type DispositionKey =
 export type Stats = {
   calls: number; connects: number; meaningful: number;
   mql: number; mqlOver90: number; mqlUnder90: number;
-  answered: number; notAnswered: number;
+  answered: number; notAnswered: number; revenue?: number; kutlerriRevenue?: number;
   dispositions: Record<"mql" | "interested" | "callback" | "not_interested" | "wrong_number" | "mql_fu" | "dnc" | "no_answer" | "bad_number", number>;
 };
 
@@ -29,10 +29,10 @@ export type Meta = {
 export type Overview = {
   range: Range; weeksOfCalls: number;
   activeClients: { count: number; of: number };
-  revenue: { total: number; orders: number; avgOrder: number | null; weeklyRunRate: number | null; weeks: number; lastUpload: string | null };
+  revenue: { total: number; orders: number; avgOrder: number | null; weeklyRunRate: number | null; weeks: number; lastUpload: string | null; kutlerri: number };
   calls: { dials: number; connects: number; meaningful: number; mql: number; mqlOver90: number; mqlUnder90: number; answered: number; notAnswered: number };
   emails: { sent: number; delivered: number; opened: number; clicked: number; replied: number; bounced: number; unsubscribed: number; clientsWithData: number };
-  byClient: { clientId: number; name: string; dials: number; connects: number; meaningful: number; mqls: number; orders: number; revenue: number; emailsSent: number; opened: number; replied: number }[];
+  byClient: { clientId: number; name: string; dials: number; connects: number; meaningful: number; mqls: number; orders: number; revenue: number; kutlerriRevenue: number; emailsSent: number; delivered: number; bounced: number; opened: number; replied: number }[];
 };
 
 export type Node = { id: number; name: string; stats: Stats; children: { id: number; name: string; stats: Stats }[] };
