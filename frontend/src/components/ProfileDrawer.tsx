@@ -27,7 +27,9 @@ export default function ProfileDrawer({ kind, id, name, onClose }: { kind: "rep"
   const state = useApi<Profile>(path);
   const p = state.data;
   // a chip with no calls in the new dates is dropped by the server; follow it
-  useEffect(() => { if (p && sel.some((s) => !p.selected.includes(s))) setSel(p.selected); }, [p, sel]);
+  // (only when new data arrives: right after a click the old data does not have the chip yet)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (p && sel.some((s) => !p.selected.includes(s))) setSel(p.selected); }, [p]);
 
   const chips = (
     <ChipPicker label={kind === "rep" ? "Choose clients" : "Choose representatives"} options={p?.options ?? []} selected={sel} onChange={setSel}
