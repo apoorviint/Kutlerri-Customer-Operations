@@ -10,6 +10,7 @@ type Change = { invoiceNo: string; kind: "added" | "changed"; fields: { field: s
 type Preview = {
   stagedId: string; fileName: string; sheets: string[]; sheet: string; rows: number; added: number; changed: number; unchanged: number;
   changes: Change[]; flags: { invoiceNo: string; total: number; expected: number; difference: number }[]; errors: string[]; warnings: string[]; willCommit: boolean;
+  duplicates: { order: string; rows: number[] }[];
 };
 type Upload = { id: number; fileName: string | null; uploadedBy: string | null; uploadedAt: string; status: string; summary: { rows?: number; added?: number; changed?: number; flags?: number } | null };
 type Summary = { orders: number; lastUpload: { id: number; at: string; by: string | null; fileName: string | null } | null };
@@ -24,20 +25,23 @@ export default function Billing() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [same, setSame] = useState<"same" | "different" | null>(null); // the answer about repeated orders
   const act = useAction();
 
-  async function check() {
+  async function check(answer: "same" | "different" | null = null) {
     if (!file) return;
     setDone(null);
+    setSame(answer);
     const f = new FormData();
     f.set("file", file);
+    if (answer) f.set("duplicates", answer);
     const p = await act.run(() => api<Preview>("/admin/files/billing/preview", { method: "POST", body: f }));
     if (p) setPreview(p);
   }
   async function commit() {
     if (!preview) return;
     const r = await act.run(() => api<{ committed: boolean; message?: string; warning?: string }>("/admin/files/billing/commit", {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stagedId: preview.stagedId, fileName: preview.fileName, sheet: preview.sheet }),
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stagedId: preview.stagedId, fileName: preview.fileName, sheet: preview.sheet, duplicates: same }),
     }));
     if (!r) return;
     setDone(r.committed ? `Saved. The revenue figures are updated.${r.warning ? ` ${r.warning}` : ""}` : (r.message ?? "Nothing to save."));
@@ -56,12 +60,12 @@ export default function Billing() {
           {(s) => <p className="small">{s.orders.toLocaleString()} orders stored · last upload: <b>{s.lastUpload ? `${when(s.lastUpload.at)} by ${s.lastUpload.by ?? "—"}` : "never"}</b></p>}
         </Async>
         <p className="na">
-          One row per order. An order is identified by its invoice / order number: a number already stored is updated, a new one is added, and rows you leave out are not touched.
-          Needs Invoice no, Client, Representative, Order date and Total; Created date, Account, Subtotal, Tax, Tip, Fee and Discount are optional. <TemplateLink name="billing" label="Download the template" />
+          One row per order. The Invoice column is ignored: an order is identified by its Client, Created date, Order date, Account and Total, so one already stored is updated, a new one is added, and rows you leave out are not touched.
+          Needs Client, Representative, Order date and Total; Created date, Account, Subtotal, Tax, Tip, Fee and Discount are optional. <TemplateLink name="billing" label="Download the template" />
         </p>
         <div className="adm-form">
-          <FilePick accept=".xlsx,.xlsm,.csv" label="Billing file" file={file} onFile={(f) => { setFile(f); setPreview(null); setDone(null); }} />
-          <button className="btn primary" disabled={!file || act.busy} onClick={check}>{act.busy && !preview ? "Checking…" : "Check the file"}</button>
+          <FilePick accept=".xlsx,.xlsm,.csv" label="Billing file" file={file} onFile={(f) => { setFile(f); setPreview(null); setDone(null); setSame(null); }} />
+          <button className="btn primary" disabled={!file || act.busy} onClick={() => check()}>{act.busy && !preview ? "Checking…" : "Check the file"}</button>
         </div>
         <ErrorBox error={act.error} problems={act.problems} />
         {done && <Notice kind="ok">{done}</Notice>}
@@ -70,6 +74,15 @@ export default function Billing() {
           <div className="adm-preview">
             <h4>{preview.fileName}{preview.sheets.length > 1 ? ` · sheet “${preview.sheet}”` : ""} · {preview.rows} orders</h4>
             {preview.errors.length > 0 && <Notice kind="bad"><b>These must be fixed before saving:</b><ul>{preview.errors.slice(0, 40).map((e, i) => <li key={i}>{e}</li>)}</ul></Notice>}
+            {preview.duplicates.length > 0 && (
+              <Notice kind="warn"><b>Some orders have exactly the same details more than once. Are they the same order, or different orders?</b>
+                <ul>{preview.duplicates.slice(0, 20).map((d, i) => <li key={i}>{d.order} (rows {d.rows.join(", ")})</li>)}</ul>
+                <div className="adm-actions">
+                  <button className="btn primary" disabled={act.busy} onClick={() => check("same")}>Same order (count once)</button>
+                  <button className="btn" disabled={act.busy} onClick={() => check("different")}>Different orders (count each)</button>
+                </div>
+              </Notice>
+            )}
             {preview.flags.length > 0 && (
               <Notice kind="warn"><b>{preview.flags.length} order(s) where Total ≠ Subtotal + Tax + Tip + Fee − Discount</b> (they can still be saved):
                 <ul>{preview.flags.slice(0, 20).map((f) => <li key={f.invoiceNo}>{f.invoiceNo}: total {money(f.total)}, expected {money(f.expected)} (off by {money(f.difference)})</li>)}</ul>

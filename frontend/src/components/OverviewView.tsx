@@ -36,10 +36,15 @@ export default function OverviewView() {
                   <div className="ov-top"><Metric lead k="Active clients" v={n0(o.activeClients.count)} n={`of ${o.activeClients.of} clients · with calls, orders or emails in these dates`} /></div>
 
                   <Section title="Revenue" cls="ov-rev">
-                    <Metric lead k="Order Value / Total Revenue" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
+                    <Metric lead k="GSV (Gross Sales Value)" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
                     <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Item Total, per client" />
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
+                    <div className="ov-m">
+                      <div className="k">Weekly run rate by client</div>
+                      {o.byClient.filter((x) => x.orders).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.weeklyRunRate)}</b></div>)}
+                      <div className="n">GSV ÷ weeks in the selected dates</div>
+                    </div>
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
                   </Section>
                   <p className="pnote" data-testid="billing-last-upload">Billing sheet last uploaded: {r.lastUpload ? new Date(r.lastUpload).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "not uploaded yet"}</p>
@@ -66,7 +71,7 @@ export default function OverviewView() {
                     <h3 className="ov-h"><i />By client</h3>
                     <div className="panel"><div className="tablewrap">
                       <table>
-                        <thead><tr><th className="left">Client</th><th>Dials</th><th>Connects</th><th>Meaningful conversations</th><th>MQLs</th><th>Orders</th><th>Order Value / Total Revenue</th><th>Kutlerri's Revenue</th><th>Emails sent</th><th>Delivered</th><th>Opened</th><th>Replied</th></tr></thead>
+                        <thead><tr><th className="left">Client</th><th>Dials</th><th>Connects</th><th>Meaningful conversations</th><th>MQLs</th><th>Orders</th><th>GSV (Gross Sales Value)</th><th>Kutlerri's Revenue</th><th>Emails sent</th><th>Delivered</th><th>Opened</th><th>Replied</th></tr></thead>
                         <tbody>
                           {o.byClient.map((x) => (
                             <tr key={x.clientId}>

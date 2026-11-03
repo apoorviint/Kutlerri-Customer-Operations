@@ -66,7 +66,7 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
             {groupHead("answered", "Answered", ANSWERED_KEYS)}
             <th>MQL</th>
             {groupHead("not_answered", "Not answered", NOT_ANSWERED_KEYS)}
-            <th title="Item Total of the orders created in these dates">Order Value / Total Revenue</th>
+            <th title="Item Total of the orders created in these dates">GSV (Gross Sales Value)</th>
             <th title="Kutlerri's share of the Item Total, at each client's rate">Kutlerri's Revenue</th>
           </tr>
         </thead>
