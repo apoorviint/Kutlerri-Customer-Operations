@@ -136,6 +136,7 @@ function Schedules({ m, reload }: { m: M; reload: () => void }) {
   const [excluded, setExcluded] = useState(m.settings.agentFallbackExcludedLines.join(", "));
   const [start, setStart] = useState(m.settings.backfillStart);
   const [saved, setSaved] = useState<string | null>(null);
+  const [chg, setChg] = useState({ from: "", client: "", breakStart: "", breakEnd: "" });
   useEffect(() => { setT(m.settings.timing); setFallback(m.settings.agentFallback); setExcluded(m.settings.agentFallbackExcludedLines.join(", ")); setStart(m.settings.backfillStart); }, [m.settings]);
 
   const customers = m.clients.filter((c) => c.kind === "CUSTOMER");
@@ -143,6 +144,11 @@ function Schedules({ m, reload }: { m: M; reload: () => void }) {
   const setSched = (name: string | null, k: "start" | "breakStart" | "breakEnd", v: string) => {
     if (name === null) setT({ ...t, default: { ...t.default, [k]: v } });
     else setT({ ...t, clients: { ...t.clients, [name]: { ...sched(name), [k]: v } } });
+  };
+  const changes = t.breakChanges ?? [];
+  const addChange = () => {
+    setT({ ...t, breakChanges: [...changes, { from: chg.from, client: chg.client || null, breakStart: chg.breakStart, breakEnd: chg.breakEnd }].sort((a, b) => a.from.localeCompare(b.from)) });
+    setChg({ ...chg, from: "" });
   };
   const num = (k: keyof Pick<TimingSettings, "gapMinutes" | "breakMinMinutes" | "windowMinutes" | "graceMinutes" | "allowedBreakMinutes">, label: string) => (
     <label key={k}>{label}<input type="number" min={0} value={t[k]} onChange={(e) => setT({ ...t, [k]: Number(e.target.value) })} /></label>
@@ -163,6 +169,19 @@ function Schedules({ m, reload }: { m: M; reload: () => void }) {
         name ?? "Default (everyone else)",
         ...(["start", "breakStart", "breakEnd"] as const).map((k) => <input key={k} type="time" aria-label={`${name ?? "Default"} ${k}`} value={sched(name)[k]} onChange={(e) => setSched(name, k, e.target.value)} />),
       ])} />
+      <h4>Break time changes</h4>
+      <p className="na">To move a break from a date onwards (for example when US clocks change), add it here. Until that date the times above are used. A change for Default moves every client that has no row of its own. A time after midnight (like 00:30) is the same shift. Press Save settings after adding.</p>
+      <Table head={["From", "Client", "Break starts", "Break ends", ""]} empty="No changes." rows={changes.map((c, i) => [
+        c.from, c.client ?? "Default (everyone else)", c.breakStart, c.breakEnd,
+        <button key="d" className="btn small" onClick={() => setT({ ...t, breakChanges: changes.filter((_, j) => j !== i) })}>Remove</button>,
+      ])} />
+      <div className="adm-form">
+        <label>From<input type="date" value={chg.from} onChange={(e) => setChg({ ...chg, from: e.target.value })} /></label>
+        <label>Client<select value={chg.client} onChange={(e) => setChg({ ...chg, client: e.target.value })}><option value="">Default (everyone else)</option>{customers.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}</select></label>
+        <label>Break starts<input type="time" value={chg.breakStart} onChange={(e) => setChg({ ...chg, breakStart: e.target.value })} /></label>
+        <label>Break ends<input type="time" value={chg.breakEnd} onChange={(e) => setChg({ ...chg, breakEnd: e.target.value })} /></label>
+        <button className="btn" disabled={!chg.from || !chg.breakStart || !chg.breakEnd} onClick={addChange}>Add change</button>
+      </div>
       <div className="adm-form">
         {num("gapMinutes", "A pause counts from (min)")}{num("breakMinMinutes", "A break is at least (min)")}{num("windowMinutes", "…and starts within (min of schedule)")}
         {num("graceMinutes", "On time means within (min)")}{num("allowedBreakMinutes", "Allowed break (min)")}

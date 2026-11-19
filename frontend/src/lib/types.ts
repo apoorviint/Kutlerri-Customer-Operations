@@ -17,6 +17,7 @@ type ClockSchedule = { start: string; breakStart: string; breakEnd: string }; //
 export type TimingSettings = {
   gapMinutes: number; breakMinMinutes: number; windowMinutes: number; graceMinutes: number; allowedBreakMinutes: number;
   default: ClockSchedule; clients: Record<string, ClockSchedule>;
+  breakChanges?: { from: string; client: string | null; breakStart: string; breakEnd: string }[]; // break times from a date on
 };
 
 export type Meta = {
