@@ -66,7 +66,7 @@ export default function Header() {
         {me && (
           <span className="who-am-i">
             {me.role === "ADMIN" && <Link href="/admin" className="adminlink">Admin console</Link>}
-            {me.email}<button onClick={signOut}>Sign out</button>
+            <button onClick={signOut}>Sign out</button>
           </span>
         )}
       </div>

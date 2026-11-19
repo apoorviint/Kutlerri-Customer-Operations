@@ -40,6 +40,7 @@ export default function LoginPage() {
   return (
     <main className="login">
       <form onSubmit={submit}>
+        <div className="login-logo"><img src="/kutlerri-logo.png" alt="Kutlerri.ai" width={171} height={34} /></div>
         <h1>Customer Success Operations Dashboard</h1>
         {options?.google && (
           <a className="go google" href="/api/auth/google">Sign in with Google{options.domain ? ` (@${options.domain})` : ""}</a>

@@ -288,6 +288,8 @@ th.sub{font-weight:600;color:var(--muted)}
 /* ── sign in ── */
 .login{min-height:100vh;display:grid;place-items:center;padding:24px}
 .login form{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;box-shadow:var(--shadow);padding:28px;display:grid;gap:14px}
+.login-logo{background:var(--header);border-radius:8px;padding:16px;display:grid;place-items:center}
+.login-logo img{display:block;height:34px;width:auto}
 .login h1{margin:0 0 4px;font:700 22px/1.2 var(--font-ui)}
 .login input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font:500 14px var(--font-ui)}
 .login .go{padding:12px;background:var(--primary);color:var(--surface);border:0;border-radius:8px;font:700 14px var(--font-ui);cursor:pointer}
