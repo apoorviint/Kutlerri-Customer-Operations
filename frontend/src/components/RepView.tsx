@@ -52,6 +52,7 @@ export default function RepView() {
                 <CallsTable nodes={t.reps} total={t.total} first="rep" meaningfulSeconds={meta.meaningfulSeconds} onOpen={(id) => setOpen({ id, name: t.reps.find((r) => r.id === id)?.name ?? "" })} />
               </section>
               <RevenuePanel by="rep" />
+              <RevenuePanel by="rep" forecast />
               <TimingPanel />
             </>
           );

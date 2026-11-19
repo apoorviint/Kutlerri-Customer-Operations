@@ -72,19 +72,22 @@ export default function ProfileDrawer({ kind, id, name, onClose }: { kind: "rep"
               </div>
               {!s.calls && <div className="pnote">No calls for this {kind === "rep" ? "representative" : "client"} in the selected dates.</div>}
 
-              <button className="recbtn" aria-expanded={recOpen} onClick={() => setRecOpen(!recOpen)}>
-                <span>Call recordings ({n0(d.recordings)})</span><span aria-hidden>{recOpen ? "▲" : "▼"}</span>
-              </button>
-              {recOpen && <Recordings kind={kind} id={id} filterIds={sel} />}
-
-              {kind === "client" && (
-                <>
-                  <button className="recbtn" aria-expanded={mailOpen} onClick={() => setMailOpen(!mailOpen)}>
-                    <span>Emails</span><span aria-hidden>{mailOpen ? "▲" : "▼"}</span>
+              <div className={`pcols${kind === "client" ? " two" : ""}`}>
+                <div className="pcol">
+                  <button className="recbtn" aria-expanded={recOpen} onClick={() => setRecOpen(!recOpen)}>
+                    <span>Call recordings ({n0(d.recordings)})</span><span aria-hidden>{recOpen ? "▲" : "▼"}</span>
                   </button>
-                  {mailOpen && <EmailsList clientId={id} />}
-                </>
-              )}
+                  {recOpen && <Recordings kind={kind} id={id} filterIds={sel} />}
+                </div>
+                {kind === "client" && (
+                  <div className="pcol">
+                    <button className="recbtn" aria-expanded={mailOpen} onClick={() => setMailOpen(!mailOpen)}>
+                      <span>Emails</span><span aria-hidden>{mailOpen ? "▲" : "▼"}</span>
+                    </button>
+                    {mailOpen && <EmailsList clientId={id} />}
+                  </div>
+                )}
+              </div>
             </>
           );
         }}

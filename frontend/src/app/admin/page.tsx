@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Assignments from "@/components/admin/Assignments";
 import Billing from "@/components/admin/Billing";
+import Forecast from "@/components/admin/Forecast";
 import DataQuality from "@/components/admin/DataQuality";
 import { Audit, Jobs } from "@/components/admin/JobsAudit";
 import Mappings from "@/components/admin/Mappings";
@@ -52,7 +53,7 @@ export default function Admin() {
               {tab === "quality" && <DataQuality />}
               {tab === "assignments" && <Assignments />}
               {tab === "prospects" && <Prospects />}
-              {tab === "billing" && <Billing />}
+              {tab === "billing" && <><Billing /><Forecast /></>}
               {tab === "mappings" && <Mappings />}
               {tab === "users" && <Users />}
               {tab === "jobs" && <Jobs />}

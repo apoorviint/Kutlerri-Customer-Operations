@@ -90,16 +90,22 @@ function Ticks({ lo, hrs }: { lo: number; hrs: number }) {
 function Track({ d, lo, hi, hrs, label, className }: { d: RepDay; lo: number; hi: number; hrs: number; label: string; className?: string }) {
   const pc = (t: number) => (((t - lo) / (hi - lo)) * 100).toFixed(2);
   const s = d.schedule, allowed = s.breakEnd - s.breakStart, target = targetOf(d.name);
-  // only the time past the allowed break is drawn, at the end of the break
+  // when the break ran over, the part of it outside the scheduled break window is drawn in yellow,
+  // so it never sits on top of the window
   const over = d.main ? d.main.len - allowed : 0;
+  const outside: [number, number][] = [];
+  if (d.main && d.breakOver) {
+    if (d.main.from < s.breakStart) outside.push([d.main.from, Math.min(d.main.to, s.breakStart)]);
+    if (d.main.to > s.breakEnd) outside.push([Math.max(d.main.from, s.breakEnd), d.main.to]);
+  }
   return (
     <div className={`tm-track ${className ?? ""}`} style={{ ["--h" as string]: hrs }}>
       <div className="tm-win" style={{ left: `${pc(s.breakStart)}%`, width: `${((s.breakEnd - s.breakStart) / (hi - lo)) * 100}%` }} title={`Scheduled break ${clock(s.breakStart)} – ${clock(s.breakEnd)}`} />
-      {d.main && over > 0 && (
-        <div className="tm-gap" style={{ left: `${pc(d.main.to - over)}%`, width: `${(over / (hi - lo)) * 100}%` }} title={`${label}break ${clock(d.main.from)} – ${clock(d.main.to)} (${dur(d.main.len)}), ${dur(over)} over the ${allowed}m allowed`}>
-          {over / (hi - lo) > 0.075 && <span>{dur(over)}</span>}
+      {d.main && outside.map(([a, b], i) => (
+        <div key={i} className="tm-gap" style={{ left: `${pc(a)}%`, width: `${((b - a) / (hi - lo)) * 100}%` }} title={`${label}break ${clock(d.main!.from)} – ${clock(d.main!.to)} (${dur(d.main!.len)}), ${dur(over)} over the ${allowed}m allowed`}>
+          {i === outside.length - 1 && (b - a) / (hi - lo) > 0.075 && <span>{dur(over)}</span>}
         </div>
-      )}
+      ))}
       {d.blocks.map((b, i) => (
         <div key={i} className="tm-blk" style={{ left: `${pc(b.s)}%`, width: `${Math.max(0, ((b.e - b.s) / (hi - lo)) * 100)}%` }}
           title={`${label}${clock(b.s)} – ${clock(b.e)} · ${d.clients.find((c) => c.id === b.clientId)?.name ?? ""} · ${b.n} call${b.n === 1 ? "" : "s"}`} />

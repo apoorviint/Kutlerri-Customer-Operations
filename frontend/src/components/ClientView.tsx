@@ -62,6 +62,7 @@ export default function ClientView() {
                 <CallsTable nodes={t.clients} total={t.total} first="client" meaningfulSeconds={meta.meaningfulSeconds} onOpen={(id) => setOpen({ id, name: t.clients.find((c) => c.id === id)?.name ?? "" })} />
               </section>
               <RevenuePanel by="client" />
+              <RevenuePanel by="client" forecast />
               <EmailsPanel />
             </>
           );
