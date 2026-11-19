@@ -44,8 +44,13 @@ export default function OverviewView() {
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <div className="ov-m">
                       <div className="k">Weekly run rate by client</div>
-                      {o.byClient.filter((x) => x.orders).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.weeklyRunRate)}</b></div>)}
-                      <div className="n">GSV ÷ weeks in the selected dates</div>
+                      {o.byClient.filter((x) => x.orders && x.weeklyRunRate != null).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.weeklyRunRate)}</b></div>)}
+                      <div className="n">GSV ÷ weeks in the selected dates · shown once a client has been active for 2 months</div>
+                    </div>
+                    <div className="ov-m">
+                      <div className="k">Monthly average revenue by client</div>
+                      {o.byClient.filter((x) => x.orders && x.monthlyAvg != null).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.monthlyAvg)}</b></div>)}
+                      <div className="n">GSV ÷ months the client has been active (from its first call) in the selected dates</div>
                     </div>
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
                   </Section>
@@ -53,8 +58,8 @@ export default function OverviewView() {
 
                   <Section title="Calls" cls="ov-call">
                     <Metric lead k="Total dials" v={n0(c.dials)} />
-                    <Metric k="Connects/Answered" v={n0(c.connects)} n={`${pct(c.connects, c.dials)} of dials`} />
-                    <Metric k="Meaningful conversations" v={n0(c.meaningful)} n={`${pct(c.meaningful, c.connects)} of connects · over 90 seconds`} />
+                    <Metric k="Connects/Answered" v={pct(c.connects, c.dials)} n={`${n0(c.connects)} of dials`} />
+                    <Metric k="Meaningful conversations" v={pct(c.meaningful, c.connects)} n={`${n0(c.meaningful)} of connects · over 90 seconds`} />
                     <Metric k="MQLs" v={n0(c.mql)} n={<>Over 90 sec <b>{n0(c.mqlOver90)}</b> · 90 sec or less <b>{n0(c.mqlUnder90)}</b></>} />
                     <Metric k="MQL %" v={pct(c.mql, c.connects)} n="of connects" />
                     <Metric k="Not answered" v={n0(c.notAnswered)} n={`${pct(c.notAnswered, c.dials)} of dials`} />

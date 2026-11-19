@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, fShort, fmtPhone, fmtTalk, n0, nameKey } from "@/lib/format";
+import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, fShort, fmtPhone, fmtTalk, hhmm, n0, nameKey } from "@/lib/format";
 import { useFilters } from "@/lib/filters";
 import { useApi } from "@/lib/hooks";
 import type { DispositionKey, Prospect, Recording, Recordings as Data } from "@/lib/types";
@@ -34,15 +34,18 @@ export default function Recordings({ kind, id, filterIds }: { kind: "rep" | "cli
   const [category, setCategory] = useState<"answered" | "not_answered" | null>(null);
   const [sub, setSub] = useState<DispositionKey | null>(null);
   const [limit, setLimit] = useState(STEP);
+  const [minSec, setMinSec] = useState(""); // only calls at least this many seconds long
   const dq = useDebounced(q);
+  const dMin = useDebounced(minSec);
+  const minNum = Math.max(0, Math.floor(Number(dMin) || 0));
   const filterKey = filterIds.join(",");
 
   // a new search or filter starts again from the first fifty
-  useEffect(() => { setLimit(STEP); }, [dq, category, sub, filterKey, qs]);
+  useEffect(() => { setLimit(STEP); }, [dq, category, sub, filterKey, qs, minNum]);
 
   const base = kind === "rep" ? `/reps/${id}` : `/clients/${id}`;
   const filter = filterIds.length ? `&${kind === "rep" ? "clients" : "reps"}=${filterKey}` : "";
-  const path = `${base}/recordings?${qs}${filter}&limit=${limit}${dq ? `&q=${encodeURIComponent(dq)}` : ""}${category ? `&category=${category}` : ""}${category && sub ? `&sub=${sub}` : ""}`;
+  const path = `${base}/recordings?${qs}${filter}&limit=${limit}${minNum ? `&minSeconds=${minNum}` : ""}${dq ? `&q=${encodeURIComponent(dq)}` : ""}${category ? `&category=${category}` : ""}${category && sub ? `&sub=${sub}` : ""}`;
   const state = useApi<Data>(path);
   const showPhone = (name: string) => meta.clients.find((c) => nameKey(c.name) === nameKey(name))?.showPhone ?? false;
 
@@ -53,6 +56,10 @@ export default function Recordings({ kind, id, filterIds }: { kind: "rep" | "cli
     <div>
       <input type="search" className="rsearch" aria-label="Search recordings by prospect" placeholder="Search a prospect, company, designation or phone number"
         value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
+      <label className="rmin">Only calls longer than
+        <input type="number" min={0} step={1} inputMode="numeric" aria-label="Shortest call length in seconds" placeholder="0" value={minSec} onChange={(e) => setMinSec(e.target.value)} />
+        seconds
+      </label>
       <Async state={state}>
         {(d) => (
           <>
@@ -72,13 +79,13 @@ export default function Recordings({ kind, id, filterIds }: { kind: "rep" | "cli
               <ul className="rlist">
                 {d.items.map((r) => (
                   <li className="rrow" key={r.id}>
-                    <div className="l1">{fShort(r.date)}<span>{r.time}</span></div>
+                    <div className="l1">{fShort(r.date)}<span>{fmtTalk(r.durationSec)}</span></div>
                     <div className="l2">
                       {kind === "rep" ? <><span className="dot" style={{ background: colorOf(r.client) }} />{r.client}</> : r.representative}
-                      {" · "}{fmtTalk(r.durationSec)} · {r.disposition ? LABELS[r.disposition] : "No disposition"}
+                      {" · "}{hhmm(r.time)} · {r.disposition ? LABELS[r.disposition] : "No disposition"}
                     </div>
                     <ProspectLine r={r} showPhone={showPhone(r.client)} />
-                    <a className="listen" href={r.url} target="_blank" rel="noopener noreferrer" aria-label={`Listen to the ${fShort(r.date)} ${r.time} call recording`}>Listen ↗</a>
+                    <a className="listen" href={r.url} target="_blank" rel="noopener noreferrer" aria-label={`Listen to the ${fShort(r.date)} ${hhmm(r.time)} call recording`}>Listen ↗</a>
                   </li>
                 ))}
               </ul>

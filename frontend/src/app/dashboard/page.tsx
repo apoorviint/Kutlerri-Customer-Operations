@@ -8,7 +8,7 @@ import RepView from "@/components/RepView";
 import { FiltersProvider } from "@/lib/filters";
 
 type Tab = "overview" | "ops" | "client";
-const TABS: [Tab, string][] = [["overview", "Overview"], ["ops", "Representative View"], ["client", "Client View"]];
+const TABS: [Tab, string][] = [["overview", "Overview"], ["ops", "By Rep"], ["client", "By Client"]];
 
 export default function Dashboard() {
   // the Overview is the page you land on, every time

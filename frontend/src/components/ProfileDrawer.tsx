@@ -7,7 +7,7 @@ import { useApi } from "@/lib/hooks";
 import type { Profile } from "@/lib/types";
 import EmailsList from "./EmailsList";
 import Recordings from "./Recordings";
-import { Async, ChipPicker, Drawer } from "./ui";
+import { Async, ChipPicker } from "./ui";
 
 const Tile = ({ k, v, n, wide }: { k: string; v: string; n?: React.ReactNode; wide?: boolean }) => (
   <div className={`tile${wide ? " wide" : ""}`}><div className="k">{k}</div><div className="v">{v}</div>{n && <div className="n">{n}</div>}</div>
@@ -31,13 +31,29 @@ export default function ProfileDrawer({ kind, id, name, onClose }: { kind: "rep"
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (p && sel.some((s) => !p.selected.includes(s))) setSel(p.selected); }, [p]);
 
+  // a full page: start at the top, and Escape goes back
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const chips = (
     <ChipPicker label={kind === "rep" ? "Choose clients" : "Choose representatives"} options={p?.options ?? []} selected={sel} onChange={setSel}
       dot={kind === "rep" ? colorOf : undefined} />
   );
 
   return (
-    <Drawer titleId={`profile-${kind}-${id}`} title={name} chips={p ? chips : undefined} sub={<span>{fShort(from)} – {fShort(to)}</span>} onClose={onClose}>
+    <div className="ppage">
+      <header className="phead">
+        <div>
+          <div className="ptop"><button className="pback" onClick={onClose}>← Back</button><h2 id={`profile-${kind}-${id}`}>{name}</h2>{p ? chips : null}</div>
+          <div className="psub"><span>{fShort(from)} – {fShort(to)} · change the dates in the bar above</span></div>
+        </div>
+      </header>
+      <div className="pbody">
       <Async state={state}>
         {(d) => {
           const s = d.stats;
@@ -73,6 +89,7 @@ export default function ProfileDrawer({ kind, id, name, onClose }: { kind: "rep"
           );
         }}
       </Async>
-    </Drawer>
+      </div>
+    </div>
   );
 }

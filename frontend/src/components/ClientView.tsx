@@ -50,6 +50,7 @@ export default function ClientView() {
 
   return (
     <section className="view" id="view-client">
+      <div hidden={!!open}>
       <Async state={state}>
         {(t) => {
           if (!t.clients.length) return <><div className="opsbar" /><div className="empty">No calls in the selected dates. Widen the date range above.</div></>;
@@ -66,6 +67,7 @@ export default function ClientView() {
           );
         }}
       </Async>
+      </div>
       {open && <ProfileDrawer kind="client" id={open.id} name={open.name} onClose={() => setOpen(null)} />}
     </section>
   );

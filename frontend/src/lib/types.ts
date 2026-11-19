@@ -33,7 +33,7 @@ export type Overview = {
   revenue: { total: number; orders: number; avgOrder: number | null; weeklyRunRate: number | null; weeks: number; lastUpload: string | null; kutlerri: number };
   calls: { dials: number; connects: number; meaningful: number; mql: number; mqlOver90: number; mqlUnder90: number; answered: number; notAnswered: number };
   emails: { sent: number; delivered: number; opened: number; clicked: number; replied: number; bounced: number; unsubscribed: number; clientsWithData: number };
-  byClient: { clientId: number; name: string; dials: number; connects: number; meaningful: number; mqls: number; orders: number; revenue: number; kutlerriRevenue: number; weeklyRunRate: number; emailsSent: number; delivered: number; bounced: number; opened: number; replied: number }[];
+  byClient: { clientId: number; name: string; dials: number; connects: number; meaningful: number; mqls: number; orders: number; revenue: number; kutlerriRevenue: number; weeklyRunRate: number | null; monthlyAvg: number | null; activeMonths: number; emailsSent: number; delivered: number; bounced: number; opened: number; replied: number }[];
 };
 
 export type Node = { id: number; name: string; stats: Stats; children: { id: number; name: string; stats: Stats }[] };

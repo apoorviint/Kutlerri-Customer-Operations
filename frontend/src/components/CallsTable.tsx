@@ -6,7 +6,7 @@ import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, n0, pct, usd } from 
 import type { Node, Stats } from "@/lib/types";
 import { Chevron, Dot } from "./ui";
 
-type Sort = "calls" | "connects" | "meaningful" | null;
+type Sort = "calls" | "connects" | "meaningful" | "revenue" | null;
 
 /**
  * Calls by Representative and client (or the other way round). A row with more than one inside opens to show them;
@@ -21,7 +21,7 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [open, setOpen] = useState({ answered: false, not_answered: false });
 
-  const rows = sort ? [...nodes].sort((a, b) => b.stats[sort] - a.stats[sort] || b.stats.calls - a.stats.calls) : nodes;
+  const rows = sort ? [...nodes].sort((a, b) => (b.stats[sort] ?? 0) - (a.stats[sort] ?? 0) || b.stats.calls - a.stats.calls) : nodes;
   const toggle = (id: number) => setExpanded((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const childLabel = first === "rep" ? "clients" : "representatives";
   const kidName = (name: string) => (first === "rep" ? <><Dot color={colorOf(name)} />{name}</> : <>{name}</>);
@@ -29,11 +29,13 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
   const cells = (s: Stats) => (
     <>
       <td>{n0(s.calls)}</td>
-      <td>{n0(s.connects)} <span className="pct">({pct(s.connects, s.calls)})</span></td>
-      <td>{n0(s.meaningful)} <span className="pct">({pct(s.meaningful, s.connects)})</span></td>
+      <td>{pct(s.connects, s.calls)} <span className="pct">({n0(s.connects)})</span></td>
+      <td>{pct(s.meaningful, s.connects)} <span className="pct">({n0(s.meaningful)})</span></td>
       <td>{n0(s.answered)}</td>
-      <td>{n0(s.mql)} <span className="pct">({pct(s.mql, s.connects)})</span></td>
-      {open.answered && ANSWERED_KEYS.map((k) => <td key={k} className="sa">{n0(s.dispositions[k])}</td>)}
+      {!open.answered && <td>{n0(s.mql)} <span className="pct">({pct(s.mql, s.connects)})</span></td>}
+      {open.answered && ANSWERED_KEYS.map((k) => k === "mql"
+        ? <td key={k} className="sa">{n0(s.mql)} <span className="pct">({pct(s.mql, s.connects)})</span></td>
+        : <td key={k} className="sa">{n0(s.dispositions[k])}</td>)}
       <td>{n0(s.notAnswered)}</td>
       {open.not_answered && NOT_ANSWERED_KEYS.map((k) => <td key={k} className="sn">{n0(s.dispositions[k])}</td>)}
       <td>{s.revenue ? usd(s.revenue) : <span className="na">–</span>}</td>
@@ -63,13 +65,13 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
           <tr>
             <th className="left">{first === "rep" ? "Name" : "Client"}</th>
             <th className="left">{first === "rep" ? "Client" : "Sales representative"}</th>
-            {sortHead("calls", "Calls", "Click to sort high to low")}
+            {sortHead("calls", "Dials", "Click to sort high to low")}
             {sortHead("connects", "Connects", "Calls with one of the connect dispositions. Click to sort high to low.")}
             {sortHead("meaningful", "Meaningful conversations", `Connected calls with talk time over ${meaningfulSeconds} seconds. Click to sort high to low.`)}
             {groupHead("answered", "Answered", ANSWERED_KEYS)}
-            <th>MQL</th>
+            {!open.answered && <th>MQL</th>}
             {groupHead("not_answered", "Not answered", NOT_ANSWERED_KEYS)}
-            <th title="Item Total of the orders created in these dates">GSV (Gross Sales Value)</th>
+            {sortHead("revenue", "GSV (Gross Sales Value)", "Item Total of the orders created in these dates. Click to sort high to low.")}
             {showK && <th title="Kutlerri's share of the Item Total, at each client's rate">Kutlerri's Revenue</th>}
           </tr>
         </thead>

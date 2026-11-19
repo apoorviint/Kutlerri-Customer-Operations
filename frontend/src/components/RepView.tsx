@@ -30,6 +30,7 @@ export default function RepView() {
 
   return (
     <section className="view" id="view-ops">
+      <div hidden={!!open}>
       <Async state={state}>
         {(t) => {
           if (!t.reps.length) return <><div className="opsbar" /><div className="empty">No calls in the selected dates. Widen the date range above.</div></>;
@@ -56,6 +57,7 @@ export default function RepView() {
           );
         }}
       </Async>
+      </div>
       {open && <ProfileDrawer kind="rep" id={open.id} name={open.name} onClose={() => setOpen(null)} />}
     </section>
   );
