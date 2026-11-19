@@ -71,7 +71,7 @@ export type Emails = {
 };
 export type EmailDetail = { id: string; fromEmail: string | null; toEmail: string | null; subject: string | null; sentAt: string | null; bodyHtml: string | null; replied: boolean; replyText: string | null };
 
-type RevCell = { revenue: number; orders: number; by: { id: number; name: string; orders: number; revenue: number }[] };
+type RevCell = { revenue: number; orders: number; by: { id: number; name: string; orders: number; revenue: number }[]; items?: { amount: number; probability: string | null; representative: string; client: string }[] };
 export type Revenue = {
   by: "rep" | "client"; range: Range;
   weeks: { monday: string; isoWeek: number; to: string }[];

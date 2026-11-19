@@ -17,7 +17,8 @@ export default function RevenuePanel({ by, forecast }: { by: "rep" | "client"; f
   const state = useApi<Revenue>(forecast ? `/forecast/weekly?by=${by}` : `/revenue/weekly?by=${by}&${qs}${basis === "payment" ? "&date=payment" : ""}`);
   const s = state.data?.summary;
 
-  const tip = (c: Cell) => c.by.map((b) => `${b.name}: ${b.orders} order${b.orders === 1 ? "" : "s"} · ${usd(b.revenue)}`).join("\n");
+  // the forecast lists every proposal: its value, Probability, Representative and client
+  const tip = (c: Cell) => c.items ? c.items.map((i) => `${usd(i.amount)} · ${i.probability ?? "no probability"} · ${i.representative} · ${i.client}`).join("\n") : c.by.map((b) => `${b.name}: ${b.orders} order${b.orders === 1 ? "" : "s"} · ${usd(b.revenue)}`).join("\n");
   const cell = (c: Cell | undefined) =>
     c ? <td title={tip(c)}>{usd(c.revenue)}<small>{n0(c.orders)} order{c.orders === 1 ? "" : "s"}</small></td> : <td className="na">–</td>;
 
