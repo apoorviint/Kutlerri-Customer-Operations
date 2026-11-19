@@ -265,6 +265,8 @@ th.sub{font-weight:600;color:var(--muted)}
 /* ── admin console ── */
 .adminlink{color:#fff;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:5px 10px}
 .adminlink:hover{background:rgba(255,255,255,.12)}
+.themebtn{background:none;color:#fff;font:700 12px var(--font-ui);border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:5px 10px;cursor:pointer}
+.themebtn:hover{background:rgba(255,255,255,.12)}
 .adm-tabs{display:flex;gap:8px;flex-wrap:wrap}
 .adm-tabs button{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 18px;font:700 14px var(--font-ui);cursor:pointer;color:var(--ink)}
 .adm-tabs button:hover{border-color:var(--primary-soft)}

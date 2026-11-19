@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useFilters } from "@/lib/filters";
@@ -12,6 +13,23 @@ export default function Header() {
   const { from, to, preset, setFrom, setTo, setPreset } = useFilters();
   const me = useMe();
   const router = useRouter();
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // start from the saved choice, else from the device setting
+  useEffect(() => {
+    let t: string | null = null;
+    try { t = localStorage.getItem("theme"); } catch {}
+    const v = t === "dark" || t === "light" ? t : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    setTheme(v);
+    document.documentElement.dataset.theme = v;
+  }, []);
+
+  function switchTheme() {
+    const v = theme === "dark" ? "light" : "dark";
+    setTheme(v);
+    document.documentElement.dataset.theme = v;
+    try { localStorage.setItem("theme", v); } catch {}
+  }
 
   async function signOut() {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
@@ -40,6 +58,9 @@ export default function Header() {
           <label htmlFor="dateTo">To</label>
           <input type="date" id="dateTo" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
         </div>
+        <button className="themebtn" onClick={switchTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+          {theme === "dark" ? "☀ Light" : "☾ Dark"}
+        </button>
         {me && (
           <span className="who-am-i">
             {me.role === "ADMIN" && <Link href="/admin" className="adminlink">Admin console</Link>}

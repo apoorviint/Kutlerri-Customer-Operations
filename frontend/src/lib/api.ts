@@ -22,4 +22,4 @@ export const qs = (params: Record<string, string | number | undefined>) => {
   return s ? `?${s}` : "";
 };
 
-export type Me = { email: string; role: "ADMIN" | "VIEWER" };
+export type Me = { email: string; role: "ADMIN" | "VIEWER" | "LIMITED" };

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { useMe } from "@/lib/hooks";
 import { ANSWERED_KEYS, LABELS, NOT_ANSWERED_KEYS, colorOf, n0, pct, usd } from "@/lib/format";
 import type { Node, Stats } from "@/lib/types";
 import { Chevron, Dot } from "./ui";
@@ -14,6 +15,8 @@ type Sort = "calls" | "connects" | "meaningful" | null;
 export default function CallsTable({ nodes, total, first, meaningfulSeconds, onOpen }: {
   nodes: Node[]; total: Stats; first: "rep" | "client"; meaningfulSeconds: number; onOpen: (id: number) => void;
 }) {
+  const me = useMe();
+  const showK = !!me && me.role !== "LIMITED"; // the limited login never sees Kutlerri's revenue
   const [sort, setSort] = useState<Sort>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [open, setOpen] = useState({ answered: false, not_answered: false });
@@ -34,7 +37,7 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
       <td>{n0(s.notAnswered)}</td>
       {open.not_answered && NOT_ANSWERED_KEYS.map((k) => <td key={k} className="sn">{n0(s.dispositions[k])}</td>)}
       <td>{s.revenue ? usd(s.revenue) : <span className="na">–</span>}</td>
-      <td>{s.kutlerriRevenue ? usd(s.kutlerriRevenue) : <span className="na">–</span>}</td>
+      {showK && <td>{s.kutlerriRevenue ? usd(s.kutlerriRevenue) : <span className="na">–</span>}</td>}
     </>
   );
   const sortHead = (k: Exclude<Sort, null>, label: string, tip: string) => (
@@ -67,7 +70,7 @@ export default function CallsTable({ nodes, total, first, meaningfulSeconds, onO
             <th>MQL</th>
             {groupHead("not_answered", "Not answered", NOT_ANSWERED_KEYS)}
             <th title="Item Total of the orders created in these dates">GSV (Gross Sales Value)</th>
-            <th title="Kutlerri's share of the Item Total, at each client's rate">Kutlerri's Revenue</th>
+            {showK && <th title="Kutlerri's share of the Item Total, at each client's rate">Kutlerri's Revenue</th>}
           </tr>
         </thead>
         <tbody>

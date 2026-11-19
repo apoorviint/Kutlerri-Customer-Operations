@@ -2,7 +2,7 @@
 
 import { colorOf, fShort, n0, pct, usd } from "@/lib/format";
 import { useFilters } from "@/lib/filters";
-import { useApi } from "@/lib/hooks";
+import { useApi, useMe } from "@/lib/hooks";
 import type { Overview } from "@/lib/types";
 import { Async, Dot } from "./ui";
 
@@ -21,6 +21,8 @@ const Section = ({ title, cls, children, note }: { title: string; cls: string; c
 export default function OverviewView() {
   const { qs, from, to } = useFilters();
   const state = useApi<Overview>(`/overview?${qs}`);
+  const me = useMe();
+  const showK = !!me && me.role !== "LIMITED"; // the limited login never sees Kutlerri's revenue
 
   return (
     <section className="view" id="view-overview">
@@ -37,7 +39,7 @@ export default function OverviewView() {
 
                   <Section title="Revenue" cls="ov-rev">
                     <Metric lead k="GSV (Gross Sales Value)" v={usd(r.total)} n={`${n0(r.orders)} order${r.orders === 1 ? "" : "s"} · by order created date`} />
-                    <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Item Total, per client" />
+                    {showK && <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Item Total, per client" />}
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <div className="ov-m">
@@ -71,13 +73,13 @@ export default function OverviewView() {
                     <h3 className="ov-h"><i />By client</h3>
                     <div className="panel"><div className="tablewrap">
                       <table>
-                        <thead><tr><th className="left">Client</th><th>Dials</th><th>Connects</th><th>Meaningful conversations</th><th>MQLs</th><th>Orders</th><th>GSV (Gross Sales Value)</th><th>Kutlerri's Revenue</th><th>Emails sent</th><th>Delivered</th><th>Opened</th><th>Replied</th></tr></thead>
+                        <thead><tr><th className="left">Client</th><th>Dials</th><th>Connects</th><th>Meaningful conversations</th><th>MQLs</th><th>Orders</th><th>GSV (Gross Sales Value)</th>{showK && <th>Kutlerri's Revenue</th>}<th>Emails sent</th><th>Delivered</th><th>Opened</th><th>Replied</th></tr></thead>
                         <tbody>
                           {o.byClient.map((x) => (
                             <tr key={x.clientId}>
                               <td className="name"><Dot color={colorOf(x.name)} />{x.name}</td>
                               <td>{n0(x.dials)}</td><td>{n0(x.connects)}</td><td>{n0(x.meaningful)}</td><td>{n0(x.mqls)}</td>
-                              <td>{n0(x.orders)}</td><td>{x.orders ? usd(x.revenue) : <span className="na">–</span>}</td><td>{x.orders ? usd(x.kutlerriRevenue) : <span className="na">–</span>}</td>
+                              <td>{n0(x.orders)}</td><td>{x.orders ? usd(x.revenue) : <span className="na">–</span>}</td>{showK && <td>{x.orders ? usd(x.kutlerriRevenue) : <span className="na">–</span>}</td>}
                               <td>{n0(x.emailsSent)}</td><td>{n0(x.delivered)}</td><td>{n0(x.opened)} <span className="pct">({pct(x.opened, x.emailsSent)})</span></td><td>{n0(x.replied)}</td>
                             </tr>
                           ))}
@@ -85,7 +87,7 @@ export default function OverviewView() {
                         <tfoot>
                           <tr>
                             <td className="name">Total</td><td>{n0(c.dials)}</td><td>{n0(c.connects)}</td><td>{n0(c.meaningful)}</td><td>{n0(c.mql)}</td>
-                            <td>{n0(r.orders)}</td><td>{r.orders ? usd(r.total) : "–"}</td><td>{r.orders ? usd(r.kutlerri) : "–"}</td><td>{n0(e.sent)}</td><td>{n0(e.delivered)}</td><td>{n0(e.opened)} <span className="pct">({pct(e.opened, e.sent)})</span></td><td>{n0(e.replied)}</td>
+                            <td>{n0(r.orders)}</td><td>{r.orders ? usd(r.total) : "–"}</td>{showK && <td>{r.orders ? usd(r.kutlerri) : "–"}</td>}<td>{n0(e.sent)}</td><td>{n0(e.delivered)}</td><td>{n0(e.opened)} <span className="pct">({pct(e.opened, e.sent)})</span></td><td>{n0(e.replied)}</td>
                           </tr>
                         </tfoot>
                       </table>
