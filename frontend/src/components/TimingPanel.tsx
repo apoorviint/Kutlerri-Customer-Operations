@@ -70,7 +70,7 @@ const Legend = () => (
   <div className="tm-legend">
     <span><i style={{ background: "var(--primary)" }} />Calling</span>
     <span><i style={{ background: "color-mix(in srgb,var(--muted) 14%,transparent)" }} />Scheduled break</span>
-    <span><i style={{ background: "rgba(245,158,11,.20)", border: "1px solid rgba(245,158,11,.6)" }} />Break over the allowed time</span>
+    <span><i style={{ background: "color-mix(in srgb,var(--warn) 20%,transparent)", border: "1px solid color-mix(in srgb,var(--warn) 60%,transparent)" }} />Break over the allowed time</span>
     <span><b className="tm-tgt ok">✓</b>Daily call target met</span>
     <span><b className="tm-tgt miss">✗</b>Daily call target missed</span>
   </div>
