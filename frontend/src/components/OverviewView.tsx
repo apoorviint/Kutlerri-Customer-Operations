@@ -42,11 +42,16 @@ export default function OverviewView() {
                     {showK && <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Item Total, per client" />}
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
-                    <div className="ov-m">
-                      <div className="k">Monthly average revenue by client</div>
-                      {o.byClient.filter((x) => x.orders && x.monthlyAvg != null).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.monthlyAvg)}</b></div>)}
-                      <div className="n">GSV ÷ months the client has been active (from its first call) in the selected dates</div>
-                    </div>
+                    {(() => {
+                      const rows = o.byClient.filter((x) => x.orders && x.monthlyAvg != null);
+                      return (
+                        <div className="ov-m" title={rows.map((x) => `${x.name}: ${usd(x.monthlyAvg)}`).join("\n")}>
+                          <div className="k">Monthly average revenue by client</div>
+                          <div className="v">{rows.length ? usd(rows.reduce((t, x) => t + (x.monthlyAvg ?? 0), 0)) : "–"}</div>
+                          <div className="n">Overall: each client&rsquo;s GSV ÷ months it has been active (from its first call), added up. Hover for client-wise.</div>
+                        </div>
+                      );
+                    })()}
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
                   </Section>
                   <p className="pnote" data-testid="billing-last-upload">Billing sheet last uploaded: {r.lastUpload ? new Date(r.lastUpload).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "not uploaded yet"}</p>
