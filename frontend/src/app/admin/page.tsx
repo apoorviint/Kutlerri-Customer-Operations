@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AppCalls from "@/components/admin/AppCalls";
+import AppEmails from "@/components/admin/AppEmails";
 import Assignments from "@/components/admin/Assignments";
 import Billing from "@/components/admin/Billing";
 import Forecast from "@/components/admin/Forecast";
@@ -16,9 +17,9 @@ import Users from "@/components/admin/Users";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/hooks";
 
-type Tab = "quality" | "assignments" | "prospects" | "billing" | "appcalls" | "emailsheet" | "mappings" | "users" | "jobs" | "audit";
+type Tab = "quality" | "assignments" | "prospects" | "billing" | "appcalls" | "appemails" | "emailsheet" | "mappings" | "users" | "jobs" | "audit";
 const TABS: [Tab, string][] = [
-  ["quality", "Data quality"], ["assignments", "Who dialed for whom"], ["prospects", "Prospect databases"], ["billing", "Billing"], ["appcalls", "App calls"], ["emailsheet", "Email sheet"],
+  ["quality", "Data quality"], ["assignments", "Who dialed for whom"], ["prospects", "Prospect databases"], ["billing", "Billing"], ["appcalls", "App calls"], ["appemails", "App emails"], ["emailsheet", "Email sheet"],
   ["mappings", "Mappings & settings"], ["users", "People"], ["jobs", "Jobs"], ["audit", "Audit log"],
 ];
 
@@ -57,6 +58,7 @@ export default function Admin() {
               {tab === "prospects" && <Prospects />}
               {tab === "billing" && <><Billing /><Forecast /></>}
               {tab === "appcalls" && <AppCalls />}
+              {tab === "appemails" && <AppEmails />}
               {tab === "emailsheet" && <EmailSheet />}
               {tab === "mappings" && <Mappings />}
               {tab === "users" && <Users />}
