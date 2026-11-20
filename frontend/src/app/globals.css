@@ -299,9 +299,11 @@ th.sub{font-weight:600;color:var(--muted)}
 .login form{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;box-shadow:var(--shadow);padding:28px;display:grid;gap:14px}
 .login-logo{display:grid;place-items:center}
 .login-logo img{display:block;height:34px;width:auto}
-/* the logo is a light wordmark: on the light page it is darkened a little so it can be seen; on the dark page it is as it is */
-:root:not([data-theme="dark"]) .login-logo img{filter:brightness(.4)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .login-logo img{filter:none}}
+/* the dark logo on the light page, the light logo on the dark page */
+.login-logo .on-dark{display:none}
+:root[data-theme="dark"] .login-logo .on-light{display:none}
+:root[data-theme="dark"] .login-logo .on-dark{display:block}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .login-logo .on-light{display:none}:root:not([data-theme="light"]) .login-logo .on-dark{display:block}}
 .login h1{margin:0 0 4px;font:700 22px/1.2 var(--font-ui);text-align:center}
 .login input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font:500 14px var(--font-ui)}
 .login .go{padding:12px;background:var(--primary);color:var(--surface);border:0;border-radius:8px;font:700 14px var(--font-ui);cursor:pointer}
