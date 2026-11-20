@@ -70,7 +70,6 @@ const Legend = () => (
   <div className="tm-legend">
     <span><i style={{ background: "var(--primary)" }} />Calling</span>
     <span><i style={{ background: "color-mix(in srgb,var(--muted) 14%,transparent)" }} />Scheduled break</span>
-    <span><i style={{ background: "color-mix(in srgb,var(--warn) 20%,transparent)", border: "1px solid color-mix(in srgb,var(--warn) 60%,transparent)" }} />Break over the allowed time</span>
     <span><b className="tm-tgt ok">✓</b>Daily call target met</span>
     <span><b className="tm-tgt miss">✗</b>Daily call target missed</span>
   </div>
@@ -89,23 +88,10 @@ function Ticks({ lo, hrs }: { lo: number; hrs: number }) {
 
 function Track({ d, lo, hi, hrs, label, className }: { d: RepDay; lo: number; hi: number; hrs: number; label: string; className?: string }) {
   const pc = (t: number) => (((t - lo) / (hi - lo)) * 100).toFixed(2);
-  const s = d.schedule, allowed = s.breakEnd - s.breakStart, target = targetOf(d.name);
-  // when the break ran over, the part of it outside the scheduled break window is drawn in yellow,
-  // so it never sits on top of the window
-  const over = d.main ? d.main.len - allowed : 0;
-  const outside: [number, number][] = [];
-  if (d.main && d.breakOver) {
-    if (d.main.from < s.breakStart) outside.push([d.main.from, Math.min(d.main.to, s.breakStart)]);
-    if (d.main.to > s.breakEnd) outside.push([Math.max(d.main.from, s.breakEnd), d.main.to]);
-  }
+  const s = d.schedule, target = targetOf(d.name);
   return (
     <div className={`tm-track ${className ?? ""}`} style={{ ["--h" as string]: hrs }}>
       <div className="tm-win" style={{ left: `${pc(s.breakStart)}%`, width: `${((s.breakEnd - s.breakStart) / (hi - lo)) * 100}%` }} title={`Scheduled break ${clock(s.breakStart)} – ${clock(s.breakEnd)}`} />
-      {d.main && outside.map(([a, b], i) => (
-        <div key={i} className="tm-gap" style={{ left: `${pc(a)}%`, width: `${((b - a) / (hi - lo)) * 100}%` }} title={`${label}break ${clock(d.main!.from)} – ${clock(d.main!.to)} (${dur(d.main!.len)}), ${dur(over)} over the ${allowed}m allowed`}>
-          {i === outside.length - 1 && (b - a) / (hi - lo) > 0.075 && <span>{dur(over)}</span>}
-        </div>
-      ))}
       {d.blocks.map((b, i) => (
         <div key={i} className="tm-blk" style={{ left: `${pc(b.s)}%`, width: `${Math.max(0, ((b.e - b.s) / (hi - lo)) * 100)}%` }}
           title={`${label}${clock(b.s)} – ${clock(b.e)} · ${d.clients.find((c) => c.id === b.clientId)?.name ?? ""} · ${b.n} call${b.n === 1 ? "" : "s"}`} />
@@ -173,7 +159,7 @@ function DayView({ controls, list, day, setDay }: { controls: React.ReactNode; l
               <Schedules t={t.settings} />
               <div className="tm-sum">
                 <span><b>{s.dialing}</b> representative{s.dialing === 1 ? "" : "s"} dialing</span>
-                {s.breaks ? <><span>Avg break <b>{dur(s.avgBreak!)}</b></span><span>Break over limit <b>{s.breakOver}</b></span><span>Back late from break <b>{s.backLate}</b></span></> : <span>No breaks found</span>}
+                {!s.breaks && <span>No breaks found</span>}
               </div>
               <div className="tm-axis"><div /><Ticks lo={lo} hrs={hrs} /></div>
               {t.reps.map((d) => (
@@ -225,7 +211,7 @@ function WeekView({ controls, weeks, week, setWeek, reps, repId, setRepId }: {
               <Schedules t={t.settings} />
               <div className="tm-sum">
                 <span><b>{s.daysDialed}</b> day{s.daysDialed === 1 ? "" : "s"} dialed</span><span><b>{n0(s.dials)}</b> dials</span>
-                {s.breaks ? <><span>Avg break <b>{dur(s.avgBreak!)}</b></span><span>Break over limit <b>{s.breakOver}</b></span></> : <span>No breaks found</span>}
+                {!s.breaks && <span>No breaks found</span>}
               </div>
               <div className="tm-axis tw-axis"><Ticks lo={lo} hrs={hrs} /></div>
               {t.days.map(({ date, day }) => (

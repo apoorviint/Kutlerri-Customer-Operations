@@ -43,11 +43,6 @@ export default function OverviewView() {
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
                     <div className="ov-m">
-                      <div className="k">Weekly run rate by client</div>
-                      {o.byClient.filter((x) => x.orders && x.weeklyRunRate != null).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.weeklyRunRate)}</b></div>)}
-                      <div className="n">GSV ÷ weeks in the selected dates · shown once a client has been active for 2 months</div>
-                    </div>
-                    <div className="ov-m">
                       <div className="k">Monthly average revenue by client</div>
                       {o.byClient.filter((x) => x.orders && x.monthlyAvg != null).map((x) => <div className="n" key={x.clientId}>{x.name} <b>{usd(x.monthlyAvg)}</b></div>)}
                       <div className="n">GSV ÷ months the client has been active (from its first call) in the selected dates</div>
