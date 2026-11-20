@@ -11,14 +11,16 @@ import { ErrorBox, FilePick, Notice, Pill, Table, useAction, when } from "./part
 type Preview = {
   stagedId: string; fileName: string; rows: number; newCalls: number; existing: number; from: string | null; to: string | null;
   dispositions: { value: string; count: number; saved: boolean; key: DispositionKey | null }[];
-  members: { name: string; calls: number; representative: string | null }[];
+  members: { name: string; calls: number; representative: string | null; people: string[] }[];
   locations: { name: string; key: string; calls: number; client: string | null }[];
   clients: { id: number; name: string }[]; representatives: { id: number; name: string }[];
   errors: string[]; warnings: string[]; willCommit: boolean;
 };
 type Summary = { calls: number; latest: string | null; lastUpload: string | null };
 type Upload = { id: number; fileName: string | null; uploadedBy: string | null; uploadedAt: string; rows: number; newCalls: number; callsNow: number; dateFrom: string | null; dateTo: string | null; status: string };
-type Member = { name: string; calls: number; counted: number; notCounted: number };
+type Member = { name: string; calls: number; counted: number; notCounted: number; people: string[] };
+/** People linked to the same Representative are one row, shown by the Representative's name only. */
+const who = (m: { name: string }) => m.name;
 
 const OURS = Object.keys(LABELS) as DispositionKey[];
 
@@ -84,7 +86,7 @@ export default function AppCalls() {
         <>
           <h4>Are these calls counted?</h4>
           <p className="na">A call is counted when its Location is one of our clients and its Member is a Representative (or is linked to one in Mappings). The others are saved but not counted anywhere.</p>
-          <Table head={["Member", "Calls", "Counted", "Not counted"]} rows={counted.map((m) => [m.name, m.calls.toLocaleString(), m.counted.toLocaleString(), m.notCounted.toLocaleString()])} />
+          <Table head={["Member", "Calls", "Counted", "Not counted"]} rows={counted.map((m) => [who(m), m.calls.toLocaleString(), m.counted.toLocaleString(), m.notCounted.toLocaleString()])} />
         </>
       )}
 
@@ -120,7 +122,7 @@ export default function AppCalls() {
 
                 <h4>Members</h4>
                 <Table head={["Member", "Calls", "Representative"]} empty="No members." rows={preview.members.map((m) => [
-                  m.name, m.calls.toLocaleString(),
+                  who(m), m.calls.toLocaleString(),
                   m.representative ?? (
                     <select key="s" aria-label={`Representative for ${m.name}`} value={mem[m.name] ?? ""} onChange={(e) => setMem({ ...mem, [m.name]: e.target.value })}>
                       <option value="">Choose a Representative…</option>
