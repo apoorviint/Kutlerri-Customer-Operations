@@ -8,7 +8,7 @@ import type { TimingSettings } from "@/lib/types";
 import { ErrorBox, Notice, Section, Table, useAction } from "./parts";
 
 type M = {
-  representatives: { id: number; name: string; internal: boolean }[];
+  representatives: { id: number; name: string; internal: boolean; merged_into: number | null }[];
   clients: { id: number; name: string; kind: string }[];
   agents: { id: number; name: string; representativeId: number | null; calls: number }[];
   apolloRules: { id: number; kind: string; value: string; clientId: number }[];
@@ -27,6 +27,7 @@ export default function Mappings() {
       {(m) => (
         <>
           <Agents m={m} reload={reload} />
+          <Merge m={m} reload={reload} />
           <EmailRules m={m} reload={reload} />
           <TimeZones m={m} reload={reload} />
           <Schedules m={m} reload={reload} />
@@ -59,13 +60,52 @@ function Agents({ m, reload }: { m: M; reload: () => void }) {
         a.name, a.calls.toLocaleString(),
         <select key="s" aria-label={`Representative for ${a.name}`} value={a.representativeId ?? ""} disabled={act.busy} onChange={(e) => map(a.id, e.target.value)}>
           <option value="">— not mapped —</option>
-          {m.representatives.map((r) => <option key={r.id} value={r.id}>{r.name}{r.internal ? " (internal)" : ""}</option>)}
+          {m.representatives.filter((r) => !r.merged_into).map((r) => <option key={r.id} value={r.id}>{r.name}{r.internal ? " (internal)" : ""}</option>)}
         </select>,
       ])} />
       <div className="adm-form">
         <label>New Representative<input value={rep} onChange={(e) => setRep(e.target.value)} placeholder="Working name" /></label>
         <button className="btn" disabled={!rep.trim() || act.busy} onClick={addRep}>Add</button>
       </div>
+    </Section>
+  );
+}
+
+/** Two working names that are one person (Peter and Pranav): one is merged into the other, everywhere. */
+function Merge({ m, reload }: { m: M; reload: () => void }) {
+  const act = useAction();
+  const [from, setFrom] = useState("");
+  const [into, setInto] = useState("");
+  const [done, setDone] = useState<string | null>(null);
+  const live = m.representatives.filter((r) => !r.merged_into);
+  const merged = m.representatives.filter((r) => r.merged_into);
+  const nameOf = (id: number | null) => m.representatives.find((r) => r.id === id)?.name ?? "";
+  async function go() {
+    if (!confirm(`Merge ${nameOf(Number(from))} into ${nameOf(Number(into))}? All of ${nameOf(Number(from))}'s calls, orders and proposals will count for ${nameOf(Number(into))}. This cannot be undone here.`)) return;
+    const r = await act.run(() => api("/admin/representatives/merge", { method: "POST", ...json({ from: Number(from), into: Number(into) }) }));
+    if (r) { setDone("Merged. Calls are being recalculated in the background."); setFrom(""); setInto(""); reload(); }
+  }
+  return (
+    <Section title="Same person (merge Representatives)" count={0}>
+      <p className="na">Use this when two working names are one person, for example Peter and Pranav. The first name is merged into the second: they then show as one everywhere (the Rep table, timing, revenue), and a sheet that still uses the first name counts for the second.</p>
+      <ErrorBox error={act.error} />
+      {done && <Notice kind="ok">{done}</Notice>}
+      <div className="adm-form">
+        <label>Merge this name
+          <select aria-label="Name to merge" value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value="">Choose…</option>
+            {live.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </label>
+        <label>Into
+          <select aria-label="Name that stays" value={into} onChange={(e) => setInto(e.target.value)}>
+            <option value="">Choose…</option>
+            {live.filter((r) => String(r.id) !== from).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </label>
+        <button className="btn" disabled={!from || !into || act.busy} onClick={go}>{act.busy ? "Merging…" : "Merge"}</button>
+      </div>
+      <Table head={["Merged name", "Now counts as"]} empty="Nothing merged yet." rows={merged.map((r) => [r.name, nameOf(r.merged_into)])} />
     </Section>
   );
 }

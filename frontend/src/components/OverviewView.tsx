@@ -42,16 +42,9 @@ export default function OverviewView() {
                     {showK && <Metric k="Kutlerri's Revenue" v={usd(r.kutlerri)} n="Rate x Item Total, per client" />}
                     <Metric k="Orders" v={n0(r.orders)} n={`${o.byClient.filter((x) => x.orders).length} client${o.byClient.filter((x) => x.orders).length === 1 ? "" : "s"}`} />
                     <Metric k="Average order" v={r.avgOrder != null ? usd(r.avgOrder) : "–"} n="Invoice total incl. tax, tip and fees" />
-                    {(() => {
-                      const rows = o.byClient.filter((x) => x.orders && x.monthlyAvg != null);
-                      return (
-                        <div className="ov-m" title={rows.map((x) => `${x.name}: ${usd(x.monthlyAvg)}`).join("\n")}>
-                          <div className="k">Monthly average revenue by client</div>
-                          <div className="v">{rows.length ? usd(rows.reduce((t, x) => t + (x.monthlyAvg ?? 0), 0)) : "–"}</div>
-                          <div className="n">Overall: each client&rsquo;s GSV ÷ months it has been active (from its first call), added up. Hover for client-wise.</div>
-                        </div>
-                      );
-                    })()}
+                    <div className="ov-m" title={o.monthlyAverage.byClient.map((x) => `${x.name}: ${usd(x.value)}`).join("\n")}>
+                      <div className="k">Monthly average revenue by client</div>
+                      <div className="v">{o.monthlyAverage.byClient.length ? usd(o.monthlyAverage.total) : "–"}</div>                    </div>
                     <Metric k="Weekly run rate" v={r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"} n={r.weeks ? `Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders` : undefined} />
                   </Section>
                   <p className="pnote" data-testid="billing-last-upload">Billing sheet last uploaded: {r.lastUpload ? new Date(r.lastUpload).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "not uploaded yet"}</p>
@@ -84,7 +77,7 @@ export default function OverviewView() {
                             <tr key={x.clientId}>
                               <td className="name"><Dot color={colorOf(x.name)} />{x.name}</td>
                               <td>{n0(x.dials)}</td><td>{n0(x.connects)}</td><td>{n0(x.meaningful)}</td><td>{n0(x.mqls)}</td>
-                              <td>{n0(x.orders)}</td><td>{x.orders ? usd(x.revenue) : <span className="na">–</span>}</td>{showK && <td>{x.orders ? usd(x.kutlerriRevenue) : <span className="na">–</span>}</td>}
+                              <td>{n0(x.orders)}</td><td>{x.orders ? usd(x.revenue) : <span className="na">–</span>}</td>{showK && <td>{x.orders || x.kutlerriRevenue ? usd(x.kutlerriRevenue) : <span className="na">–</span>}</td>}
                               <td>{n0(x.emailsSent)}</td><td>{n0(x.delivered)}</td><td>{n0(x.opened)} <span className="pct">({pct(x.opened, x.emailsSent)})</span></td><td>{n0(x.replied)}</td>
                             </tr>
                           ))}
@@ -92,7 +85,7 @@ export default function OverviewView() {
                         <tfoot>
                           <tr>
                             <td className="name">Total</td><td>{n0(c.dials)}</td><td>{n0(c.connects)}</td><td>{n0(c.meaningful)}</td><td>{n0(c.mql)}</td>
-                            <td>{n0(r.orders)}</td><td>{r.orders ? usd(r.total) : "–"}</td>{showK && <td>{r.orders ? usd(r.kutlerri) : "–"}</td>}<td>{n0(e.sent)}</td><td>{n0(e.delivered)}</td><td>{n0(e.opened)} <span className="pct">({pct(e.opened, e.sent)})</span></td><td>{n0(e.replied)}</td>
+                            <td>{n0(r.orders)}</td><td>{r.orders ? usd(r.total) : "–"}</td>{showK && <td>{r.orders || r.kutlerri ? usd(r.kutlerri) : "–"}</td>}<td>{n0(e.sent)}</td><td>{n0(e.delivered)}</td><td>{n0(e.opened)} <span className="pct">({pct(e.opened, e.sent)})</span></td><td>{n0(e.replied)}</td>
                           </tr>
                         </tfoot>
                       </table>
