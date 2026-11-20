@@ -45,10 +45,9 @@ export default function OverviewView() {
                     <div className="ov-m" title={o.monthlyAverage.byClient.map((x) => `${x.name}: ${usd(x.value)}`).join("\n")}>
                       <div className="k">Monthly average revenue by client</div>
                       <div className="v">{o.monthlyAverage.byClient.length ? usd(o.monthlyAverage.total) : "–"}</div>                    </div>
-                    <div className="ov-m" title={o.byClient.filter((x) => x.weeklyRunRate != null).map((x) => `${x.name}: ${usd(x.weeklyRunRate)}`).join("\n")}>
+                    <div className="ov-m" title={o.weeklyRun.byClient.map((x) => `${x.name}: ${usd(x.value)}`).join("\n")}>
                       <div className="k">Weekly run rate</div>
-                      <div className="v">{r.weeklyRunRate != null ? usd(r.weeklyRunRate) : "–"}</div>
-                      {r.weeks ? <div className="n">{`Average over ${r.weeks} week${r.weeks === 1 ? "" : "s"}, from the first to the last week with orders`}</div> : null}
+                      <div className="v">{o.weeklyRun.byClient.length ? usd(o.weeklyRun.total) : "–"}</div>
                     </div>
                   </Section>
                   <p className="pnote" data-testid="billing-last-upload">Billing sheet last uploaded: {r.lastUpload ? new Date(r.lastUpload).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "not uploaded yet"}</p>

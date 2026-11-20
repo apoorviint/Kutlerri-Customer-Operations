@@ -24,16 +24,17 @@ function EmailsPanel() {
           return (
             <div className="tablewrap">
               <table>
-                <thead><tr><th className="left">Client</th><th>Emails sent</th><th>Delivered</th><th>Bounced</th><th>Opened</th><th>Open %</th><th>Replied</th></tr></thead>
+                <thead><tr><th className="left">Client</th><th>Emails sent</th><th>Delivered</th><th>Bounced</th><th>Opened</th><th>Replied</th></tr></thead>
                 <tbody>
                   {rows.map((x) => (
                     <tr key={x.clientId}>
                       <td className="name"><Dot color={colorOf(x.name)} />{x.name}</td>
-                      <td>{n0(x.emailsSent)}</td><td>{n0(x.delivered)}</td><td>{n0(x.bounced)}</td><td>{n0(x.opened)}</td><td>{pct(x.opened, x.emailsSent)}</td><td>{n0(x.replied)}</td>
+                      <td>{n0(x.emailsSent)}</td>
+                      {([x.delivered, x.bounced, x.opened, x.replied] as const).map((v, i) => <td key={i}>{n0(v)} <span className="pct">({pct(v, x.emailsSent)})</span></td>)}
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr><td className="name">Total</td><td>{n0(o.emails.sent)}</td><td>{n0(o.emails.delivered)}</td><td>{n0(o.emails.bounced)}</td><td>{n0(o.emails.opened)}</td><td>{pct(o.emails.opened, o.emails.sent)}</td><td>{n0(o.emails.replied)}</td></tr></tfoot>
+                <tfoot><tr><td className="name">Total</td><td>{n0(o.emails.sent)}</td>{([o.emails.delivered, o.emails.bounced, o.emails.opened, o.emails.replied] as const).map((v, i) => <td key={i}>{n0(v)} <span className="pct">({pct(v, o.emails.sent)})</span></td>)}</tr></tfoot>
               </table>
             </div>
           );
