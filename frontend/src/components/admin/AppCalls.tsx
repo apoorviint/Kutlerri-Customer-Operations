@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { LABELS } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
 import type { DispositionKey } from "@/lib/types";
-import { ErrorBox, FilePick, Notice, Table, useAction, when } from "./parts";
+import { ErrorBox, FilePick, Notice, Pill, Table, useAction, when } from "./parts";
 
 type Preview = {
   stagedId: string; fileName: string; rows: number; newCalls: number; existing: number; from: string | null; to: string | null;
@@ -15,6 +15,8 @@ type Preview = {
   errors: string[]; warnings: string[]; willCommit: boolean;
 };
 type Summary = { calls: number; latest: string | null; lastUpload: string | null };
+type Upload = { id: number; fileName: string | null; uploadedBy: string | null; uploadedAt: string; rows: number; newCalls: number; callsNow: number; dateFrom: string | null; dateTo: string | null; status: string };
+type Member = { name: string; calls: number; counted: number; notCounted: number };
 
 const OURS = Object.keys(LABELS) as DispositionKey[];
 
@@ -26,6 +28,8 @@ export default function AppCalls() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [map, setMap] = useState<Record<string, string>>({}); // the app's disposition -> ours ("" = none)
   const [done, setDone] = useState<string | null>(null);
+  const [counted, setCounted] = useState<Member[]>([]); // after saving: whose calls are counted
+  const history = useApi<Upload[]>(`/admin/files/app-calls/uploads?x=${tick}`);
   const act = useAction();
 
   async function check() {
@@ -41,12 +45,17 @@ export default function AppCalls() {
   async function commit() {
     if (!preview) return;
     const mapping = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v || null]));
-    const r = await act.run(() => api<{ committed: boolean; inserted: number; updated: number; unchanged: number }>("/admin/files/app-calls/commit", {
+    const r = await act.run(() => api<{ committed: boolean; inserted: number; updated: number; unchanged: number; byMember: Member[] }>("/admin/files/app-calls/commit", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stagedId: preview.stagedId, fileName: preview.fileName, mapping }),
     }));
     if (!r) return;
     setDone(`Saved. ${r.inserted} new call${r.inserted === 1 ? "" : "s"}, ${r.updated} updated, ${r.unchanged} unchanged. The dashboards are updated.`);
+    setCounted(r.byMember);
     setPreview(null); setFile(null); setTick((t) => t + 1);
+  }
+  async function remove(id: number) {
+    const r = await act.run(() => api<{ deleted: number }>(`/admin/files/app-calls/uploads/${id}/delete`, { method: "POST" }));
+    if (r) { setDone(`Deleted. ${r.deleted.toLocaleString()} call${r.deleted === 1 ? "" : "s"} removed and the counts updated.`); setCounted([]); setTick((t) => t + 1); }
   }
 
   return (
@@ -65,6 +74,13 @@ export default function AppCalls() {
       </div>
       <ErrorBox error={act.error} problems={act.problems} />
       {done && <Notice kind="ok">{done}</Notice>}
+      {counted.length > 0 && (
+        <>
+          <h4>Are these calls counted?</h4>
+          <p className="na">A call is counted for a Representative when its Store number is on the &ldquo;Who dialed for whom&rdquo; sheet for that day. The others are saved but not counted anywhere until the line is added to the sheet.</p>
+          <Table head={["Member", "Calls", "Counted", "Not counted"]} rows={counted.map((m) => [m.name, m.calls.toLocaleString(), m.counted.toLocaleString(), m.notCounted.toLocaleString()])} />
+        </>
+      )}
 
       {preview && (
         <div className="adm-preview">
@@ -92,6 +108,16 @@ export default function AppCalls() {
           </div>
         </div>
       )}
+      <h4>Uploads</h4>
+      <p className="na">Deleting an upload removes the calls that file added, and the dashboards are updated.</p>
+      <Async state={history}>
+        {(list) => (
+          <Table head={["#", "When", "File", "By", "Calls", "New", "Dates", "Status", ""]} empty="No uploads yet." rows={list.map((u) => [
+            u.id, when(u.uploadedAt), u.fileName ?? "—", u.uploadedBy ?? "—", u.rows.toLocaleString(), u.callsNow.toLocaleString(), u.dateFrom ? `${u.dateFrom} to ${u.dateTo}` : "—", <Pill key="s" status={u.status} />,
+            u.status !== "deleted" ? <button key="d" className="btn small" disabled={act.busy} onClick={() => confirm(`Delete this upload? Its ${u.callsNow.toLocaleString()} calls will be removed.`) && remove(u.id)}>Delete</button> : "",
+          ])} />
+        )}
+      </Async>
     </section>
   );
 }
