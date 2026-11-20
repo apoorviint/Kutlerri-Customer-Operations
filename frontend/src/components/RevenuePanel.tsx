@@ -30,7 +30,6 @@ export default function RevenuePanel({ by, forecast }: { by: "rep" | "client"; f
           <button className={basis === "order" ? "on" : ""} aria-pressed={basis === "order"} onClick={() => setBasis("order")}>Order date</button>
           <button className={basis === "payment" ? "on" : ""} aria-pressed={basis === "payment"} onClick={() => setBasis("payment")}>Payment date</button>
         </div>}
-        {!forecast && s?.runRate != null && <span className="rv-run">Weekly run rate <b>{usd(s.runRate)}</b></span>}
       </header>
       <Async state={state}>
         {(r) => (
