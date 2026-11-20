@@ -43,9 +43,9 @@ export default function RepView() {
               </div>
               <div className="cards">
                 <Card k="Total dials" v={n0(c.calls)} vars={<Var cur={c.calls} prev={k.previous?.calls} />} />
-                <Card k="Connects" v={n0(c.connects)} vars={<Var cur={c.connects} prev={k.previous?.connects} />} note={`${pct(c.connects, c.calls)} of dials`} />
-                <Card k="Meaningful conversations" v={n0(c.meaningful)} vars={<Var cur={c.meaningful} prev={k.previous?.meaningful} />}
-                  note={`${pct(c.meaningful, c.connects)} of connects · connected, talk time over ${meta.meaningfulSeconds} seconds`} />
+                <Card k="Connects" v={pct(c.connects, c.calls)} vars={<Var cur={c.connects} prev={k.previous?.connects} />} note={`${n0(c.connects)} of dials`} />
+                <Card k="Meaningful conversations" v={pct(c.meaningful, c.connects)} vars={<Var cur={c.meaningful} prev={k.previous?.meaningful} />}
+                  note={`${n0(c.meaningful)} of connects · connected, talk time over ${meta.meaningfulSeconds} seconds`} />
               </div>
               <section className="panel">
                 <header><h3>Calls by Sales Representative and Client</h3></header>

@@ -8,6 +8,7 @@ import Assignments from "@/components/admin/Assignments";
 import Billing from "@/components/admin/Billing";
 import Forecast from "@/components/admin/Forecast";
 import DataQuality from "@/components/admin/DataQuality";
+import EmailSheet from "@/components/admin/EmailSheet";
 import { Audit, Jobs } from "@/components/admin/JobsAudit";
 import Mappings from "@/components/admin/Mappings";
 import Prospects from "@/components/admin/Prospects";
@@ -15,9 +16,9 @@ import Users from "@/components/admin/Users";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/hooks";
 
-type Tab = "quality" | "assignments" | "prospects" | "billing" | "appcalls" | "mappings" | "users" | "jobs" | "audit";
+type Tab = "quality" | "assignments" | "prospects" | "billing" | "appcalls" | "emailsheet" | "mappings" | "users" | "jobs" | "audit";
 const TABS: [Tab, string][] = [
-  ["quality", "Data quality"], ["assignments", "Who dialed for whom"], ["prospects", "Prospect databases"], ["billing", "Billing"], ["appcalls", "App calls"],
+  ["quality", "Data quality"], ["assignments", "Who dialed for whom"], ["prospects", "Prospect databases"], ["billing", "Billing"], ["appcalls", "App calls"], ["emailsheet", "Email sheet"],
   ["mappings", "Mappings & settings"], ["users", "People"], ["jobs", "Jobs"], ["audit", "Audit log"],
 ];
 
@@ -56,6 +57,7 @@ export default function Admin() {
               {tab === "prospects" && <Prospects />}
               {tab === "billing" && <><Billing /><Forecast /></>}
               {tab === "appcalls" && <AppCalls />}
+              {tab === "emailsheet" && <EmailSheet />}
               {tab === "mappings" && <Mappings />}
               {tab === "users" && <Users />}
               {tab === "jobs" && <Jobs />}
