@@ -20,6 +20,7 @@ export default function Prospects() {
   const [clientId, setClientId] = useState<number | null>(null);
   const batches = useApi<Batch[]>(`/admin/files/prospects/batches?x=${tick}${clientId ? `&clientId=${clientId}` : ""}`);
   const totals = useApi<Record<string, number>>(`/admin/files/prospects/summary?x=${tick}`);
+  const recs = useApi<Record<string, { recordings: number; matched: number }>>(`/admin/files/prospects/recordings?x=${tick}`);
   const [file, setFile] = useState<File | null>(null);
   const [replace, setReplace] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -90,6 +91,7 @@ export default function Prospects() {
           <label className="inl">Show <select aria-label="Show uploads for" value={clientId ?? ""} onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : null)}><option value="">all clients</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         </header>
         {totals.data && <p className="small">Phone numbers indexed: {customers.map((c) => `${c.name} ${n(totals.data![String(c.id)] ?? 0)}`).join(" · ")}</p>}
+        {recs.data && <p className="small">Recordings matched with the database: {customers.filter((c) => recs.data![String(c.id)]).map((c) => { const r = recs.data![String(c.id)]; return `${c.name} ${n(r.matched)} of ${n(r.recordings)} (${n(r.recordings - r.matched)} not matched)`; }).join(" · ")}</p>}
         <Async state={batches}>
           {(list) => (
             <Table head={["#", "Client", "File", "When", "Status", "Rows read", "Phones indexed", "Newly matched calls", "Mode", ""]} empty="No uploads yet."
