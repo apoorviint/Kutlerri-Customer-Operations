@@ -59,7 +59,7 @@ export default function ProfileDrawer({ kind, id, name, onClose }: { kind: "rep"
           const s = d.stats;
           return (
             <>
-              <div className="tiles">
+              <div className={`tiles${d.revenue ? " has-rev" : ""}`}>
                 <Tile k="Calls" v={n0(s.calls)} />
                 <Tile k="Connects/Answered" v={n0(s.connects)} />
                 <Tile hl k="% of connects" v={pct(s.connects, s.calls)} n="of calls" />
@@ -68,7 +68,7 @@ export default function ProfileDrawer({ kind, id, name, onClose }: { kind: "rep"
                 <Tile hl k="% of meaningful conversations" v={pct(s.meaningful, s.connects)} n="of connects" />
                 <Tile k="MQLs" v={n0(s.mql)} n={<>Over 90 sec <b>{n0(s.mqlOver90)}</b> · 90 sec or less <b>{n0(s.mqlUnder90)}</b></>} />
                 <Tile hl k="MQL %" v={pct(s.mql, s.connects)} n="of connects" />
-                {d.revenue && <Tile full k="Revenue" v={usd(d.revenue.total)} n={`${n0(d.revenue.orders)} order${d.revenue.orders === 1 ? "" : "s"}`} />}
+                {d.revenue && <Tile k="Revenue" v={usd(d.revenue.total)} n={`${n0(d.revenue.orders)} order${d.revenue.orders === 1 ? "" : "s"}`} />}
               </div>
               {!s.calls && <div className="pnote">No calls for this {kind === "rep" ? "representative" : "client"} in the selected dates.</div>}
 
