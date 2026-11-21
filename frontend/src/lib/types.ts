@@ -89,7 +89,7 @@ export type RepDay = {
   main: { from: number; to: number; len: number; before: number; after: number } | null;
   other: { from: number; to: number; len: number }[];
   firstDelta: number; breakStartDelta: number | null; returnDelta: number | null; breakLenDelta: number | null;
-  lateStart: boolean; lateReturn: boolean; breakOver: boolean;
+  lateStart: boolean; lateReturn: boolean; breakOver: boolean; breakOutside?: boolean;
 };
 export type TimingSummary = { dialing: number; breaks: number; avgBreak: number | null; breakOver: number; backLate: number; lateStart: number };
 export type TimingDays = { days: string[]; weeks: { monday: string; representatives: { id: number; name: string; dials: number }[] }[] };

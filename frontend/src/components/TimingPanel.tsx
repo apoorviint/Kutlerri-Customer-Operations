@@ -120,7 +120,7 @@ function TimingRow({ d, grace, nameCell, clientsCell }: { d: RepDay; grace: numb
         <>
           <Compare t={m.from} delta={d.breakStartDelta!} grace={grace} flag={false} />
           <Compare t={m.to} delta={d.returnDelta!} grace={grace} flag />
-          <td>{dur(m.len)}<small className={d.breakLenDelta! > grace ? "neg" : ""}>{Math.abs(d.breakLenDelta!) <= grace ? `within ${allowed}m` : `${Math.abs(Math.round(d.breakLenDelta!))}m ${d.breakLenDelta! > 0 ? "over" : "under"} ${allowed}m`}</small></td>
+          <td title={d.breakOutside ? "The longest pause of the day. It is not close to the scheduled break time." : undefined}>{dur(m.len)}<small className={d.breakLenDelta! > grace ? "neg" : ""}>{Math.abs(d.breakLenDelta!) <= grace ? `within ${allowed}m` : `${Math.abs(Math.round(d.breakLenDelta!))}m ${d.breakLenDelta! > 0 ? "over" : "under"} ${allowed}m`}</small></td>
           <td>{n0(m.before)}</td><td>{n0(m.after)}</td>
         </>
       ) : <>{dash}{dash}{dash}{dash}{dash}</>}
