@@ -41,7 +41,8 @@ export function FiltersProvider({ children }: { children: React.ReactNode }) {
       setPreset: (p) => {
         setPreset(p);
         const r = presetRange(p, meta.today);
-        if (r) { setFromRaw(r[0]); setToRaw(r[1]); } // "Custom" leaves the dates as they are
+        if (r) { setFromRaw(r[0]); setToRaw(r[1]); } // "Custom" starts on all the dates there is data for
+        else { setFromRaw(meta.dateMin); setToRaw(meta.dateMax); }
       },
       range: { from, to },
       qs: `from=${from}&to=${to}`,
